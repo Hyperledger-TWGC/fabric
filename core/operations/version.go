@@ -42,9 +42,9 @@ func (m *VersionInfoHandler) sendResponse(resp http.ResponseWriter, code int, pa
 		logger := flogging.MustGetLogger("operations.runner")
 		logger.Errorw("failed to encode payload", "error", err)
 		resp.WriteHeader(http.StatusInternalServerError)
-		return
+	} else {
+		resp.WriteHeader(code)
+		resp.Header().Set("Content-Type", "application/json")
+		resp.Write(js)
 	}
-	resp.Header().Set("Content-Type", "application/json")
-	resp.WriteHeader(code)
-	resp.Write(js)
 }

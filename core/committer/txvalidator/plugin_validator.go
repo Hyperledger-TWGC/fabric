@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/hyperledger/fabric/fastfabric/cached"
+
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	ledger2 "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/core/handlers/validation/api"
@@ -57,7 +59,7 @@ type Context struct {
 	VSCCName  string
 	Policy    []byte
 	Namespace string
-	Block     *common.Block
+	Block     *cached.Block
 }
 
 // String returns a string representation of this Context

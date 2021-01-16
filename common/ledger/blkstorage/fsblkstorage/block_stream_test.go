@@ -19,9 +19,10 @@ package fsblkstorage
 import (
 	"testing"
 
+	"github.com/hyperledger/fabric/fastfabric/cached"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
-	"github.com/hyperledger/fabric/protos/common"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -111,7 +112,7 @@ func testBlockStream(t *testing.T, numFiles int) {
 
 	numBlocksInEachFile := 10
 	bg, gb := testutil.NewBlockGenerator(t, ledgerID, false)
-	w.addBlocks([]*common.Block{gb})
+	w.addBlocks([]*cached.Block{cached.WrapBlock(gb)})
 	for i := 0; i < numFiles; i++ {
 		numBlocks := numBlocksInEachFile
 		if i == 0 {

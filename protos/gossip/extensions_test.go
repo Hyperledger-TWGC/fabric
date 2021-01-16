@@ -21,6 +21,8 @@ import (
 	"fmt"
 	"testing"
 
+	common2 "github.com/hyperledger/fabric/protos/common"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/stretchr/testify/assert"
@@ -44,8 +46,7 @@ func TestToString(t *testing.T) {
 	// and the following does the same for payloads:
 	dMsg := &DataMessage{
 		Payload: &Payload{
-			SeqNum: 3,
-			Data:   []byte{2, 2, 2, 2, 2},
+			Data: &common2.Block{Header: &common2.BlockHeader{Number: 2}},
 		},
 	}
 	assert.Contains(t, fmt.Sprintf("%v", dMsg), "2")
@@ -62,8 +63,7 @@ func TestToString(t *testing.T) {
 			Content: &GossipMessage_DataMsg{
 				DataMsg: &DataMessage{
 					Payload: &Payload{
-						SeqNum: 3,
-						Data:   []byte{2, 2, 2, 2, 2},
+						Data: &common2.Block{Header: &common2.BlockHeader{Number: 2}},
 					},
 				},
 			},
@@ -139,7 +139,7 @@ func TestToString(t *testing.T) {
 			Content: &GossipMessage_StateResponse{
 				StateResponse: &RemoteStateResponse{
 					Payloads: []*Payload{
-						{Data: []byte{2, 2, 2}},
+						{Data: &common2.Block{Header: &common2.BlockHeader{Number: 2}}},
 					},
 				},
 			},
@@ -443,8 +443,7 @@ func TestCheckGossipMessageTypes(t *testing.T) {
 	msg = signedGossipMessage(channelID, GossipMessage_EMPTY, &GossipMessage_StateResponse{
 		StateResponse: &RemoteStateResponse{
 			Payloads: []*Payload{{
-				SeqNum: 1,
-				Data:   []byte{1, 2, 3, 4, 5},
+				Data: &common2.Block{Header: &common2.BlockHeader{Number: 2}},
 			}},
 		},
 	})
@@ -843,8 +842,7 @@ func dataMessage(seqNum uint64, data []byte) *GossipMessage_DataMsg {
 	return &GossipMessage_DataMsg{
 		DataMsg: &DataMessage{
 			Payload: &Payload{
-				SeqNum: seqNum,
-				Data:   data,
+				Data: &common2.Block{Header: &common2.BlockHeader{Number: seqNum}},
 			},
 		},
 	}

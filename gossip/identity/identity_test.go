@@ -14,6 +14,8 @@ import (
 	"testing"
 	"time"
 
+	common2 "github.com/hyperledger/fabric/protos/common"
+
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/util"
@@ -77,7 +79,7 @@ func (*naiveCryptoService) GetPKIidOfCert(peerIdentity api.PeerIdentityType) com
 
 // VerifyBlock returns nil if the block is properly signed,
 // else returns error
-func (*naiveCryptoService) VerifyBlock(chainID common.ChainID, seqNum uint64, signedBlock []byte) error {
+func (*naiveCryptoService) VerifyBlock(chainID common.ChainID, seqNum uint64, signedBlock *common2.Block) error {
 	return nil
 }
 

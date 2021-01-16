@@ -8,11 +8,13 @@ package state
 
 import (
 	"bytes"
+
+	"github.com/hyperledger/fabric/fastfabric/cached"
+	// "github.com/hyperledger/fabric/fastfabric/config"
 	"sync"
 	"sync/atomic"
 	"time"
 
-	pb "github.com/golang/protobuf/proto"
 	vsccErrors "github.com/hyperledger/fabric/common/errors"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/comm"
@@ -31,7 +33,7 @@ import (
 // capable to full fill missing blocks by running state replication and
 // sending request to get missing block to other nodes
 type GossipStateProvider interface {
-	AddPayload(payload *proto.Payload) error
+	AddPayload(payload *cached.GossipPayload) error
 
 	// Stop terminates state transfer object
 	Stop()
@@ -91,7 +93,7 @@ type MCSAdapter interface {
 	// VerifyBlock returns nil if the block is properly signed, and the claimed seqNum is the
 	// sequence number that the block's header contains.
 	// else returns error
-	VerifyBlock(chainID common2.ChainID, seqNum uint64, signedBlock []byte) error
+	VerifyBlock(chainID common2.ChainID, seqNum uint64, signedBlock *cached.Block) error
 
 	// VerifyByChannel checks that signature is a valid signature of message
 	// under a peer's verification key, but also in the context of a specific channel.
@@ -104,7 +106,7 @@ type MCSAdapter interface {
 type ledgerResources interface {
 	// StoreBlock deliver new block with underlined private data
 	// returns missing transaction ids
-	StoreBlock(block *common.Block, data util.PvtDataCollections) error
+	StoreBlock(block *cached.Block, data util.PvtDataCollections) error
 
 	// StorePvtData used to persist private date into transient store
 	StorePvtData(txid string, privData *transientstore.TxPvtReadWriteSetWithConfigInfo, blckHeight uint64) error
@@ -113,7 +115,7 @@ type ledgerResources interface {
 	// the order of private data in slice of PvtDataCollections doesn't imply the order of
 	// transactions in the block related to these private data, to get the correct placement
 	// need to read TxPvtData.SeqInBlock field
-	GetPvtDataAndBlockByNum(seqNum uint64, peerAuthInfo common.SignedData) (*common.Block, util.PvtDataCollections, error)
+	GetPvtDataAndBlockByNum(seqNum uint64, peerAuthInfo common.SignedData) (*cached.Block, util.PvtDataCollections, error)
 
 	// Get recent block sequence number
 	LedgerHeight() (uint64, error)
@@ -467,13 +469,6 @@ func (s *GossipStateProviderImpl) handleStateRequest(msg proto.ReceivedMessage) 
 			continue
 		}
 
-		blockBytes, err := pb.Marshal(block)
-
-		if err != nil {
-			logger.Errorf("Could not marshal block: %+v", errors.WithStack(err))
-			continue
-		}
-
 		var pvtBytes [][]byte
 		if pvtData != nil {
 			// Marshal private data
@@ -486,8 +481,7 @@ func (s *GossipStateProviderImpl) handleStateRequest(msg proto.ReceivedMessage) 
 
 		// Appending result to the response
 		response.Payloads = append(response.Payloads, &proto.Payload{
-			SeqNum:      seqNum,
-			Data:        blockBytes,
+			Data:        block.Block,
 			PrivateData: pvtBytes,
 		})
 	}
@@ -510,19 +504,23 @@ func (s *GossipStateProviderImpl) handleStateResponse(msg proto.ReceivedMessage)
 		return uint64(0), errors.New("Received state transfer response without payload")
 	}
 	for _, payload := range response.GetPayloads() {
-		logger.Debugf("Received payload with sequence number %d.", payload.SeqNum)
-		if err := s.mediator.VerifyBlock(common2.ChainID(s.chainID), payload.SeqNum, payload.Data); err != nil {
-			err = errors.WithStack(err)
-			logger.Warningf("Error verifying block with sequence number %d, due to %+v", payload.SeqNum, err)
-			return uint64(0), err
-		}
-		if max < payload.SeqNum {
-			max = payload.SeqNum
+		seqNum := payload.Data.Header.Number
+		logger.Debugf("Received payload with sequence number %d.", seqNum)
+		block := cached.WrapBlock(payload.Data)
+		// if config.IsFastPeer {
+		// 	if err := s.mediator.VerifyBlock(common2.ChainID(s.chainID), seqNum, block); err != nil {
+		// 		err = errors.WithStack(err)
+		// 		logger.Warningf("Error verifying block with sequence number %d, due to %+v", seqNum, err)
+		// 		return uint64(0), err
+		// 	}
+		// }
+		if max < seqNum {
+			max = seqNum
 		}
 
-		err := s.addPayload(payload, Blocking)
+		err := s.addPayload(&cached.GossipPayload{Data: block, PrivateData: payload.PrivateData}, Blocking)
 		if err != nil {
-			logger.Warningf("Block [%d] received from block transfer wasn't added to payload buffer: %v", payload.SeqNum, err)
+			logger.Warningf("Block [%d] received from block transfer wasn't added to payload buffer: %v", seqNum, err)
 		}
 	}
 	return max, nil
@@ -554,8 +552,12 @@ func (s *GossipStateProviderImpl) queueNewMessage(msg *proto.GossipMessage) {
 
 	dataMsg := msg.GetDataMsg()
 	if dataMsg != nil {
-		if err := s.addPayload(dataMsg.GetPayload(), NonBlocking); err != nil {
-			logger.Warningf("Block [%d] received from gossip wasn't added to payload buffer: %v", dataMsg.Payload.SeqNum, err)
+		plRaw := dataMsg.GetPayload()
+		if err := s.addPayload(&cached.GossipPayload{
+			Data:        cached.WrapBlock(plRaw.Data),
+			PrivateData: plRaw.PrivateData,
+		}, NonBlocking); err != nil {
+			logger.Warningf("Block [%d] received from gossip wasn't added to payload buffer: %v", dataMsg.Payload.Data.Header.Number, err)
 			return
 		}
 
@@ -566,7 +568,6 @@ func (s *GossipStateProviderImpl) queueNewMessage(msg *proto.GossipMessage) {
 
 func (s *GossipStateProviderImpl) deliverPayloads() {
 	defer s.done.Done()
-
 	for {
 		select {
 		// Wait for notification that next seq has arrived
@@ -574,28 +575,31 @@ func (s *GossipStateProviderImpl) deliverPayloads() {
 			logger.Debugf("[%s] Ready to transfer payloads (blocks) to the ledger, next block number is = [%d]", s.chainID, s.payloads.Next())
 			// Collect all subsequent payloads
 			for payload := s.payloads.Pop(); payload != nil; payload = s.payloads.Pop() {
-				rawBlock := &common.Block{}
-				if err := pb.Unmarshal(payload.Data, rawBlock); err != nil {
-					logger.Errorf("Error getting block with seqNum = %d due to (%+v)...dropping block", payload.SeqNum, errors.WithStack(err))
-					continue
-				}
-				if rawBlock.Data == nil || rawBlock.Header == nil {
-					logger.Errorf("Block with claimed sequence %d has no header (%v) or data (%v)",
-						payload.SeqNum, rawBlock.Header, rawBlock.Data)
-					continue
-				}
-				logger.Debugf("[%s] Transferring block [%d] with %d transaction(s) to the ledger", s.chainID, payload.SeqNum, len(rawBlock.Data.Data))
+				block := payload.Data
+				logger.Debugf("[%s] Transferring block [%d] with %d transaction(s) to the ledger", s.chainID, block.Header.Number, len(block.Data.Data))
 
 				// Read all private data into slice
 				var p util.PvtDataCollections
 				if payload.PrivateData != nil {
 					err := p.Unmarshal(payload.PrivateData)
 					if err != nil {
-						logger.Errorf("Wasn't able to unmarshal private data for block seqNum = %d due to (%+v)...dropping block", payload.SeqNum, errors.WithStack(err))
+						logger.Errorf("Wasn't able to unmarshal private data for block seqNum = %d due to (%+v)...dropping block", block.Header.Number, errors.WithStack(err))
 						continue
 					}
 				}
-				if err := s.commitBlock(rawBlock, p); err != nil {
+				// go func(block *cached.Block, p util.PvtDataCollections) {
+				// 	if err := s.commitBlock(block, p); err != nil {
+				// 		if executionErr, isExecutionErr := err.(*vsccErrors.VSCCExecutionFailureError); isExecutionErr {
+				// 			logger.Errorf("Failed executing VSCC due to %v. Aborting chain processing", executionErr)
+				// 			s.Stop()
+				// 			return
+				// 		}
+				// 		logger.Panicf("Cannot commit block to the ledger due to %+v", errors.WithStack(err))
+				// 		s.Stop()
+				// 	}
+				// }(block, p)
+
+				if err := s.commitBlock(block, p); err != nil {
 					if executionErr, isExecutionErr := err.(*vsccErrors.VSCCExecutionFailureError); isExecutionErr {
 						logger.Errorf("Failed executing VSCC due to %v. Aborting chain processing", executionErr)
 						return
@@ -771,7 +775,7 @@ func (s *GossipStateProviderImpl) hasRequiredHeight(height uint64) func(peer dis
 }
 
 // AddPayload adds new payload into state.
-func (s *GossipStateProviderImpl) AddPayload(payload *proto.Payload) error {
+func (s *GossipStateProviderImpl) AddPayload(payload *cached.GossipPayload) error {
 	return s.addPayload(payload, s.config.BlockingMode)
 }
 
@@ -779,18 +783,19 @@ func (s *GossipStateProviderImpl) AddPayload(payload *proto.Payload) error {
 // given parameter. If it gets a block while in blocking mode - it would wait until
 // the block is sent into the payloads buffer.
 // Else - it may drop the block, if the payload buffer is too full.
-func (s *GossipStateProviderImpl) addPayload(payload *proto.Payload, blockingMode bool) error {
+func (s *GossipStateProviderImpl) addPayload(payload *cached.GossipPayload, blockingMode bool) error {
 	if payload == nil {
 		return errors.New("Given payload is nil")
 	}
-	logger.Debugf("[%s] Adding payload to local buffer, blockNum = [%d]", s.chainID, payload.SeqNum)
+	blockNum := payload.Data.Header.Number
+	logger.Debugf("[%s] Adding payload to local buffer, blockNum = [%d]", s.chainID, blockNum)
 	height, err := s.ledger.LedgerHeight()
 	if err != nil {
 		return errors.Wrap(err, "Failed obtaining ledger height")
 	}
 
-	if !blockingMode && payload.SeqNum-height >= uint64(s.config.MaxBlockDistance) {
-		return errors.Errorf("Ledger height is at %d, cannot enqueue block with sequence of %d", height, payload.SeqNum)
+	if !blockingMode && blockNum-height >= uint64(s.config.MaxBlockDistance) {
+		return errors.Errorf("Ledger height is at %d, cannot enqueue block with sequence of %d", height, blockNum)
 	}
 
 	for blockingMode && s.payloads.Size() > s.config.MaxBlockDistance*2 {
@@ -802,7 +807,7 @@ func (s *GossipStateProviderImpl) addPayload(payload *proto.Payload, blockingMod
 	return nil
 }
 
-func (s *GossipStateProviderImpl) commitBlock(block *common.Block, pvtData util.PvtDataCollections) error {
+func (s *GossipStateProviderImpl) commitBlock(block *cached.Block, pvtData util.PvtDataCollections) error {
 
 	t1 := time.Now()
 

@@ -14,6 +14,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hyperledger/fabric/fastfabric/cached"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/capabilities"
 	"github.com/hyperledger/fabric/common/channelconfig"
@@ -60,7 +62,7 @@ func TestConfigTxCreateLedger(t *testing.T) {
 	chanConf := helper.sampleChannelConfig(1, true)
 	genesisTx := helper.constructGenesisTx(t, chainid, chanConf)
 	genesisBlock := helper.constructBlock(genesisTx, 0, nil)
-	ledger, err := ledgermgmt.CreateLedger(genesisBlock)
+	ledger, err := ledgermgmt.CreateLedger(genesisBlock.Block)
 	assert.NoError(t, err)
 
 	retrievedchanConf, err := retrievePersistedChannelConfig(ledger)
@@ -84,7 +86,7 @@ func TestConfigTxUpdateChanConfig(t *testing.T) {
 	chanConf := helper.sampleChannelConfig(1, true)
 	genesisTx := helper.constructGenesisTx(t, chainid, chanConf)
 	genesisBlock := helper.constructBlock(genesisTx, 0, nil)
-	lgr, err := ledgermgmt.CreateLedger(genesisBlock)
+	lgr, err := ledgermgmt.CreateLedger(genesisBlock.Block)
 	assert.NoError(t, err)
 
 	retrievedchanConf, err := retrievePersistedChannelConfig(lgr)
@@ -181,7 +183,7 @@ func (h *testHelper) constructGenesisTx(t *testing.T, chainid string, chanConf *
 	return txEnvelope
 }
 
-func (h *testHelper) constructBlock(txEnvelope *common.Envelope, blockNum uint64, previousHash []byte) *common.Block {
+func (h *testHelper) constructBlock(txEnvelope *common.Envelope, blockNum uint64, previousHash []byte) *cached.Block {
 	return testutil.NewBlock([]*common.Envelope{txEnvelope}, blockNum, previousHash)
 }
 

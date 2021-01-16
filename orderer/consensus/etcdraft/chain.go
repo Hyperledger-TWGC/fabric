@@ -14,6 +14,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/hyperledger/fabric/fastfabric/cached"
+
 	"code.cloudfoundry.org/clock"
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/configtx"
@@ -843,7 +845,7 @@ func (c *Chain) writeBlock(block *common.Block, index uint64) {
 
 	c.logger.Infof("Writing block [%d] (Raft index: %d) to ledger", block.Header.Number, index)
 
-	if utils.IsConfigBlock(block) {
+	if utils.IsConfigBlock(cached.WrapBlock(block)) {
 		c.writeConfigBlock(block, index)
 		return
 	}
@@ -913,7 +915,7 @@ func (c *Chain) propose(ch chan<- *common.Block, bc *blockCreator, batches ...[]
 		}
 
 		// if it is config block, then we should wait for the commit of the block
-		if utils.IsConfigBlock(b) {
+		if utils.IsConfigBlock(cached.WrapBlock(b)) {
 			c.configInflight = true
 		}
 
@@ -949,7 +951,7 @@ func (c *Chain) catchUp(snap *raftpb.Snapshot) error {
 		if block == nil {
 			return errors.Errorf("failed to fetch block [%d] from cluster", next)
 		}
-		if utils.IsConfigBlock(block) {
+		if utils.IsConfigBlock(cached.WrapBlock(block)) {
 			c.support.WriteConfigBlock(block, nil)
 
 			configMembership := c.detectConfChange(block)
@@ -1290,7 +1292,7 @@ func (c *Chain) getInFlightConfChange() *raftpb.ConfChange {
 		return nil // nothing to failover just started the chain
 	}
 
-	if !utils.IsConfigBlock(c.lastBlock) {
+	if !utils.IsConfigBlock(cached.WrapBlock(c.lastBlock)) {
 		return nil
 	}
 

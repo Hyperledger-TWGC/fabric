@@ -1,6 +1,5 @@
 /*
 Copyright IBM Corp. All Rights Reserved.
-
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -20,6 +19,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 	"github.com/hyperledger/fabric/core/ledger/ledgerstorage"
+	"github.com/hyperledger/fabric/fastfabric/cached"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/pkg/errors"
@@ -108,7 +108,8 @@ func (provider *Provider) Initialize(initializer *ledger.Initializer) error {
 // created ledgers list (atomically). If a crash happens in between, the 'recoverUnderConstructionLedger'
 // function is invoked before declaring the provider to be usable
 func (provider *Provider) Create(genesisBlock *common.Block) (ledger.PeerLedger, error) {
-	ledgerID, err := utils.GetChainIDFromBlock(genesisBlock)
+	genBlock := cached.WrapBlock(genesisBlock)
+	ledgerID, err := utils.GetChainIDFromBlock(genBlock.Block)
 	if err != nil {
 		return nil, err
 	}
@@ -129,7 +130,11 @@ func (provider *Provider) Create(genesisBlock *common.Block) (ledger.PeerLedger,
 		panicOnErr(provider.idStore.unsetUnderConstructionFlag(), "Error while unsetting under construction flag")
 		return nil, err
 	}
-	if err := lgr.CommitWithPvtData(&ledger.BlockAndPvtData{Block: genesisBlock}, &ledger.CommitOptions{}); err != nil {
+	if err := lgr.CommitWithPvtData(&ledger.BlockAndPvtData{
+		Block: genBlock,
+	},
+		&ledger.CommitOptions{},
+	); err != nil {
 		lgr.Close()
 		return nil, err
 	}

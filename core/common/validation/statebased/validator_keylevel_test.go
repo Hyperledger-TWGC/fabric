@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/hyperledger/fabric/fastfabric/cached"
+
 	"github.com/hyperledger/fabric/common/errors"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
@@ -33,15 +35,15 @@ func (m *mockPolicyEvaluator) Evaluate(policyBytes []byte, signatureSet []*commo
 	return m.EvaluateRV
 }
 
-func buildBlockWithTxs(txs ...[]byte) *common.Block {
-	return &common.Block{
+func buildBlockWithTxs(txs ...[]byte) *cached.Block {
+	return cached.WrapBlock(&common.Block{
 		Header: &common.BlockHeader{
 			Number: 1,
 		},
 		Data: &common.BlockData{
 			Data: txs,
 		},
-	}
+	})
 }
 
 func buildTXWithRwset(rws []byte) []byte {

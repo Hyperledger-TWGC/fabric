@@ -15,6 +15,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/hyperledger/fabric/fastfabric/cached"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/configtx"
@@ -355,7 +357,7 @@ func ConsensusMetadataFromConfigBlock(block *common.Block) (*etcdraft.ConfigMeta
 		return nil, errors.New("nil block")
 	}
 
-	if !utils.IsConfigBlock(block) {
+	if !utils.IsConfigBlock(cached.WrapBlock(block)) {
 		return nil, errors.New("not a config block")
 	}
 

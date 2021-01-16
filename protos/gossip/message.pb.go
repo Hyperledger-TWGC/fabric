@@ -1732,12 +1732,11 @@ func (m *PrivateDataMessage) GetPayload() *PrivatePayload {
 
 // Payload contains a block
 type Payload struct {
-	SeqNum               uint64   `protobuf:"varint,1,opt,name=seq_num,json=seqNum,proto3" json:"seq_num,omitempty"`
-	Data                 []byte   `protobuf:"bytes,2,opt,name=data,proto3" json:"data,omitempty"`
-	PrivateData          [][]byte `protobuf:"bytes,3,rep,name=private_data,json=privateData,proto3" json:"private_data,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
+	Data                 *common.Block `protobuf:"bytes,1,opt,name=data,proto3" json:"data,omitempty"`
+	PrivateData          [][]byte      `protobuf:"bytes,2,rep,name=private_data,json=privateData,proto3" json:"private_data,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}      `json:"-"`
+	XXX_unrecognized     []byte        `json:"-"`
+	XXX_sizecache        int32         `json:"-"`
 }
 
 func (m *Payload) Reset()         { *m = Payload{} }
@@ -1764,14 +1763,7 @@ func (m *Payload) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_Payload proto.InternalMessageInfo
 
-func (m *Payload) GetSeqNum() uint64 {
-	if m != nil {
-		return m.SeqNum
-	}
-	return 0
-}
-
-func (m *Payload) GetData() []byte {
+func (m *Payload) GetData() *common.Block {
 	if m != nil {
 		return m.Data
 	}

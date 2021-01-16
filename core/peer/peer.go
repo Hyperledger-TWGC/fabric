@@ -12,6 +12,8 @@ import (
 	"runtime"
 	"sync"
 
+	"github.com/hyperledger/fabric/fastfabric/cached"
+
 	"github.com/hyperledger/fabric/common/channelconfig"
 	cc "github.com/hyperledger/fabric/common/config"
 	"github.com/hyperledger/fabric/common/configtx"
@@ -438,12 +440,12 @@ func createChain(
 		*semaphore.Weighted
 	}{cs, validationWorkersSemaphore}
 	validator := txvalidator.NewTxValidator(cid, vcs, sccp, pm)
-	c := committer.NewLedgerCommitterReactive(ledger, func(block *common.Block) error {
-		chainID, err := utils.GetChainIDFromBlock(block)
+	c := committer.NewLedgerCommitterReactive(ledger, func(block *cached.Block) error {
+		chainID, err := block.GetChannelId()
 		if err != nil {
 			return err
 		}
-		return SetCurrConfigBlock(block, chainID)
+		return SetCurrConfigBlock(block.Block, chainID)
 	})
 
 	oc, ok := bundle.OrdererConfig()

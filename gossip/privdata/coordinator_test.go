@@ -15,6 +15,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hyperledger/fabric/fastfabric/cached"
+
 	pb "github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
@@ -209,7 +211,7 @@ type validatorMock struct {
 	err error
 }
 
-func (v *validatorMock) Validate(block *common.Block) error {
+func (v *validatorMock) Validate(block *cached.Block) error {
 	if v.err != nil {
 		return v.err
 	}

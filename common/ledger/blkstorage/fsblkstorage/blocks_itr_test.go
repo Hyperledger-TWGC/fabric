@@ -21,6 +21,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hyperledger/fabric/fastfabric/cached"
+
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/stretchr/testify/assert"
@@ -167,13 +169,13 @@ func iterateInBackground(t *testing.T, itr *blocksItr, quitAfterBlkNum uint64, w
 	}
 }
 
-func testIterateAndVerify(t *testing.T, itr *blocksItr, blocks []*common.Block, readyAt int, readyChan chan<- struct{}, doneChan chan bool) {
+func testIterateAndVerify(t *testing.T, itr *blocksItr, blocks []*cached.Block, readyAt int, readyChan chan<- struct{}, doneChan chan bool) {
 	blocksIterated := 0
 	for {
 		t.Logf("blocksIterated: %v", blocksIterated)
 		block, err := itr.Next()
 		assert.NoError(t, err)
-		assert.Equal(t, blocks[blocksIterated], block)
+		assert.Equal(t, blocks[blocksIterated].Block, block)
 		blocksIterated++
 		if blocksIterated == readyAt {
 			close(readyChan)
@@ -185,6 +187,6 @@ func testIterateAndVerify(t *testing.T, itr *blocksItr, blocks []*common.Block, 
 	doneChan <- true
 }
 
-func testAppendBlocks(blkfileMgrWrapper *testBlockfileMgrWrapper, blocks []*common.Block) {
+func testAppendBlocks(blkfileMgrWrapper *testBlockfileMgrWrapper, blocks []*cached.Block) {
 	blkfileMgrWrapper.addBlocks(blocks)
 }

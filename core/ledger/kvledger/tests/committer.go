@@ -9,6 +9,8 @@ package tests
 import (
 	"testing"
 
+	"github.com/hyperledger/fabric/fastfabric/cached"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/protos/common"
@@ -51,7 +53,7 @@ func (c *committer) cutBlockAndCommitExpectError(trans []*txAndPvtdata, missingP
 func (c *committer) copyOfBlockAndPvtdata(blk *ledger.BlockAndPvtData) *ledger.BlockAndPvtData {
 	blkBytes, err := proto.Marshal(blk.Block)
 	c.assert.NoError(err)
-	blkCopy := &common.Block{}
+	blkCopy := cached.WrapBlock(&common.Block{})
 	c.assert.NoError(proto.Unmarshal(blkBytes, blkCopy))
 	return &ledger.BlockAndPvtData{Block: blkCopy, PvtData: blk.PvtData,
 		MissingPvtData: blk.MissingPvtData}
@@ -91,6 +93,6 @@ func (g *blkGenerator) nextBlockAndPvtdata(trans []*txAndPvtdata, missingPvtData
 	g.lastNum++
 	g.lastHash = block.Header.Hash()
 	setBlockFlagsToValid(block)
-	return &ledger.BlockAndPvtData{Block: block, PvtData: blockPvtdata,
+	return &ledger.BlockAndPvtData{Block: cached.WrapBlock(block), PvtData: blockPvtdata,
 		MissingPvtData: missingPvtData}
 }

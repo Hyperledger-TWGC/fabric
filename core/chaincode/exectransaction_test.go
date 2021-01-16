@@ -25,6 +25,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hyperledger/fabric/fastfabric/cached"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/channelconfig"
@@ -323,7 +325,7 @@ func endTxSimulation(chainID string, ccid *pb.ChaincodeID, txsim ledger.TxSimula
 			defer _commitLock_.Unlock()
 
 			blockAndPvtData := &ledger.BlockAndPvtData{
-				Block:   block,
+				Block:   cached.WrapBlock(block),
 				PvtData: make(ledger.TxPvtDataMap),
 			}
 

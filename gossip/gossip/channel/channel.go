@@ -9,6 +9,9 @@ package channel
 import (
 	"bytes"
 	"fmt"
+
+	"github.com/hyperledger/fabric/fastfabric/cached"
+	// "github.com/hyperledger/fabric/fastfabric/config"
 	"reflect"
 	"strconv"
 	"sync"
@@ -208,7 +211,7 @@ func NewGossipChannel(pkiID common.PKIidType, org api.OrgIdentityType, mcs api.M
 	gc.blocksPuller = gc.createBlockPuller()
 
 	seqNumFromMsg := func(m interface{}) string {
-		return fmt.Sprintf("%d", m.(*proto.SignedGossipMessage).GetDataMsg().Payload.SeqNum)
+		return fmt.Sprintf("%d", m.(*proto.SignedGossipMessage).GetDataMsg().Payload.Data.Header.Number)
 	}
 	gc.blockMsgStore = msgstore.NewMessageStoreExpirable(comparator, func(m interface{}) {
 		gc.logger.Debugf("Removing %s from the message store", seqNumFromMsg(m))
@@ -423,7 +426,7 @@ func (gc *gossipChannel) createBlockPuller() pull.Mediator {
 			gc.logger.Warning("Non-data block or with no payload")
 			return ""
 		}
-		return fmt.Sprintf("%d", dataMsg.Payload.SeqNum)
+		return fmt.Sprintf("%d", dataMsg.Payload.Data.Header.Number)
 	}
 	adapter := &pull.PullAdapter{
 		Sndr:        gc,
@@ -601,10 +604,12 @@ func (gc *gossipChannel) HandleMessage(msg proto.ReceivedMessage) {
 			if !gc.blockMsgStore.CheckValid(msg.GetGossipMessage()) {
 				return
 			}
-			if !gc.verifyBlock(m.GossipMessage, msg.GetConnectionInfo().ID) {
-				gc.logger.Warning("Failed verifying block", m.GetDataMsg().Payload.SeqNum)
-				return
-			}
+			// if config.IsFastPeer {
+			// 	if !gc.verifyBlock(m.GossipMessage, msg.GetConnectionInfo().ID) {
+			// 		gc.logger.Warning("Failed verifying block", m.GetDataMsg().Payload.Data.Header.Number)
+			// 		return
+			// 	}
+			// }
 			gc.Lock()
 			added = gc.blockMsgStore.Add(msg.GetGossipMessage())
 			if added {
@@ -769,9 +774,9 @@ func (gc *gossipChannel) verifyBlock(msg *proto.GossipMessage, sender common.PKI
 		gc.logger.Warning("Received empty payload from", sender)
 		return false
 	}
-	seqNum := payload.SeqNum
-	rawBlock := payload.Data
-	err := gc.mcs.VerifyBlock(msg.Channel, seqNum, rawBlock)
+	seqNum := payload.Data.Header.Number
+	block := cached.WrapBlock(payload.Data)
+	err := gc.mcs.VerifyBlock(msg.Channel, seqNum, block)
 	if err != nil {
 		gc.logger.Warningf("Received fabricated block from %v in DataUpdate: %+v", sender, errors.WithStack(err))
 		return false

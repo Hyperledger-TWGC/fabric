@@ -9,6 +9,8 @@ package tests
 import (
 	"testing"
 
+	"github.com/hyperledger/fabric/fastfabric/cached"
+
 	"github.com/davecgh/go-spew/spew"
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -188,12 +190,12 @@ func (r *retrievedBlockAndPvtdata) pvtdataShouldNotContain(ns, coll string) {
 	}
 }
 
-func (r *retrievedBlockAndPvtdata) sameBlockHeaderAndData(expectedBlock *common.Block) {
+func (r *retrievedBlockAndPvtdata) sameBlockHeaderAndData(expectedBlock *cached.Block) {
 	r.assert.True(proto.Equal(expectedBlock.Data, r.BlockAndPvtData.Block.Data))
 	r.assert.True(proto.Equal(expectedBlock.Header, r.BlockAndPvtData.Block.Header))
 }
 
-func (r *retrievedBlockAndPvtdata) sameMetadata(expectedBlock *common.Block) {
+func (r *retrievedBlockAndPvtdata) sameMetadata(expectedBlock *cached.Block) {
 	// marshalling/unmarshalling treats a nil byte and empty byte interchangeably (based on which scheme is chosen proto vs gob)
 	// so explicitly comparing each metadata
 	retrievedMetadata := r.Block.Metadata.Metadata

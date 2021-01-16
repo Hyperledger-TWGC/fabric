@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/hyperledger/fabric/fastfabric/cached"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
@@ -122,7 +124,7 @@ func (bf *blockFactory) AddTxnWithEndorsement(txID string, nsName string, hash [
 	return bf
 }
 
-func (bf *blockFactory) create() *common.Block {
+func (bf *blockFactory) create() *cached.Block {
 	defer func() {
 		*bf = blockFactory{channelID: bf.channelID}
 	}()
@@ -136,7 +138,7 @@ func (bf *blockFactory) create() *common.Block {
 	}
 
 	if bf.lacksMetadata {
-		return block
+		return cached.WrapBlock(block)
 	}
 	block.Metadata = &common.BlockMetadata{
 		Metadata: make([][]byte, common.BlockMetadataIndex_TRANSACTIONS_FILTER+1),
@@ -151,7 +153,7 @@ func (bf *blockFactory) create() *common.Block {
 		block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER][txSeqInBlock] = uint8(peer.TxValidationCode_INVALID_ENDORSER_TRANSACTION)
 	}
 
-	return block
+	return cached.WrapBlock(block)
 }
 
 func (bf *blockFactory) withoutMetadata() *blockFactory {

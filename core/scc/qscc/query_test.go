@@ -21,6 +21,8 @@ import (
 	"os"
 	"testing"
 
+	"github.com/hyperledger/fabric/fastfabric/cached"
+
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/aclmgmt/mocks"
@@ -328,7 +330,7 @@ func TestQueryGeneratedBlock(t *testing.T) {
 	}
 }
 
-func addBlockForTesting(t *testing.T, chainid string) *common.Block {
+func addBlockForTesting(t *testing.T, chainid string) *cached.Block {
 	ledger := peer.GetLedger(chainid)
 	defer ledger.Close()
 

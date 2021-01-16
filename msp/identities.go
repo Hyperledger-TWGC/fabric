@@ -12,7 +12,6 @@ import (
 	"crypto/x509"
 	"encoding/hex"
 	"encoding/pem"
-	"fmt"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -95,17 +94,6 @@ func (id *identity) Validate() error {
 	return id.msp.Validate(id)
 }
 
-type OUIDs []*OUIdentifier
-
-func (o OUIDs) String() string {
-	var res []string
-	for _, id := range o {
-		res = append(res, fmt.Sprintf("%s(%X)", id.OrganizationalUnitIdentifier, id.CertifiersIdentifier[0:8]))
-	}
-
-	return fmt.Sprintf("%s", res)
-}
-
 // GetOrganizationalUnits returns the OU for this instance
 func (id *identity) GetOrganizationalUnits() []*OUIdentifier {
 	if id.cert == nil {
@@ -119,7 +107,7 @@ func (id *identity) GetOrganizationalUnits() []*OUIdentifier {
 		return nil
 	}
 
-	var res []*OUIdentifier
+	res := []*OUIdentifier{}
 	for _, unit := range id.cert.Subject.OrganizationalUnit {
 		res = append(res, &OUIdentifier{
 			OrganizationalUnitIdentifier: unit,
