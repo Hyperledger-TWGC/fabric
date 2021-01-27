@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package txvalidator_test
 
 import (
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"os"
@@ -80,7 +81,7 @@ func getProposalWithType(ccID string, pType common.HeaderType) (*peer.Proposal, 
 			Input:       &peer.ChaincodeInput{Args: [][]byte{[]byte("func")}},
 			Type:        peer.ChaincodeSpec_GOLANG}}
 
-	proposal, _, err := protoutil.CreateProposalFromCIS(pType, "testchannelid", cis, signerSerialized)
+	proposal, _, err := protoutil.CreateChaincodeProposal(pType, "testchannelid", cis, signerSerialized, sha256.New())
 	return proposal, err
 }
 
@@ -94,7 +95,7 @@ func getEnvWithType(ccID string, event []byte, res []byte, pType common.HeaderTy
 	response := &peer.Response{Status: 200}
 
 	// endorse it to get a proposal response
-	presp, err := protoutil.CreateProposalResponse(prop.Header, prop.Payload, response, res, event, &peer.ChaincodeID{Name: ccID, Version: ccVersion}, signer)
+	presp, err := protoutil.CreateProposalResponse(prop.Header, prop.Payload, response, res, event, &peer.ChaincodeID{Name: ccID, Version: ccVersion}, signer, sha256.New())
 	require.NoError(t, err)
 
 	// assemble a transaction from that proposal and endorsement
@@ -121,13 +122,13 @@ func getEnvWithSigner(ccID string, event []byte, res []byte, sig msp.SigningIden
 
 	sID, err := sig.Serialize()
 	require.NoError(t, err)
-	prop, _, err := protoutil.CreateProposalFromCIS(pType, "foochain", cis, sID)
+	prop, _, err := protoutil.CreateChaincodeProposal(pType, "foochain", cis, sID, sha256.New())
 	require.NoError(t, err)
 
 	response := &peer.Response{Status: 200}
 
 	// endorse it to get a proposal response
-	presp, err := protoutil.CreateProposalResponse(prop.Header, prop.Payload, response, res, event, &peer.ChaincodeID{Name: ccID, Version: ccVersion}, sig)
+	presp, err := protoutil.CreateProposalResponse(prop.Header, prop.Payload, response, res, event, &peer.ChaincodeID{Name: ccID, Version: ccVersion}, sig, sha256.New())
 	require.NoError(t, err)
 
 	// assemble a transaction from that proposal and endorsement

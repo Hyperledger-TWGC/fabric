@@ -9,6 +9,7 @@ package protoutil
 import (
 	"crypto/rand"
 	"fmt"
+	"hash"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -32,6 +33,13 @@ func MarshalOrPanic(pb proto.Message) []byte {
 func Marshal(pb proto.Message) ([]byte, error) {
 	return proto.Marshal(pb)
 }
+func UnmarshalOrPanic(message []byte) (pb proto.Message) {
+	err := proto.Unmarshal(message, pb)
+	if err != nil {
+		panic(err)
+	}
+	return
+}
 
 // CreateNonceOrPanic generates a nonce using the common/crypto package
 // and panics if this operation fails.
@@ -45,7 +53,7 @@ func CreateNonceOrPanic() []byte {
 
 // CreateNonce generates a nonce using the common/crypto package.
 func CreateNonce() ([]byte, error) {
-	nonce, err := getRandomNonce()
+	nonce, err := GetRandomNonce()
 	return nonce, errors.WithMessage(err, "error generating random nonce")
 }
 
@@ -126,10 +134,11 @@ func MakeSignatureHeader(serializedCreatorCertChain []byte, nonce []byte) *cb.Si
 
 // SetTxID generates a transaction id based on the provided signature header
 // and sets the TxId field in the channel header
-func SetTxID(channelHeader *cb.ChannelHeader, signatureHeader *cb.SignatureHeader) {
+func SetTxID(channelHeader *cb.ChannelHeader, signatureHeader *cb.SignatureHeader, h hash.Hash) {
 	channelHeader.TxId = ComputeTxID(
 		signatureHeader.Nonce,
 		signatureHeader.Creator,
+		h,
 	)
 }
 
@@ -254,7 +263,7 @@ func EnvelopeToConfigUpdate(configtx *cb.Envelope) (*cb.ConfigUpdateEnvelope, er
 	return configUpdateEnv, nil
 }
 
-func getRandomNonce() ([]byte, error) {
+func GetRandomNonce() ([]byte, error) {
 	key := make([]byte, 24)
 
 	_, err := rand.Read(key)

@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package chainmgmt
 
 import (
+	"crypto/sha256"
 	"fmt"
 
 	"github.com/hyperledger/fabric-protos-go/common"
@@ -56,7 +57,7 @@ func createTxEnv(simulationResults []byte) (*common.Envelope, error) {
 			return nil, err
 		}
 	}
-	presp, err := protoutil.CreateProposalResponse(prop.Header, prop.Payload, nil, simulationResults, nil, dummyCCID, signer)
+	presp, err := protoutil.CreateProposalResponse(prop.Header, prop.Payload, nil, simulationResults, nil, dummyCCID, signer, sha256.New())
 	if err != nil {
 		return nil, err
 	}

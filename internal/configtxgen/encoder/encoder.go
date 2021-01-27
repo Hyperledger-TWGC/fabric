@@ -135,6 +135,7 @@ func NewChannelGroup(conf *genesisconfig.Profile) (*cb.ConfigGroup, error) {
 		return nil, errors.Wrapf(err, "error adding policies to channel group")
 	}
 
+	// TODO how could we make this configurable
 	addValue(channelGroup, channelconfig.HashingAlgorithmValue(), channelconfig.AdminsPolicyKey)
 	addValue(channelGroup, channelconfig.BlockDataHashingStructureValue(), channelconfig.AdminsPolicyKey)
 	if conf.Orderer != nil && len(conf.Orderer.Addresses) > 0 {
@@ -593,6 +594,8 @@ func NewBootstrapper(config *genesisconfig.Profile) (*Bootstrapper, error) {
 	}
 
 	channelGroup, err := NewChannelGroup(config)
+	hashingAlgorithm := protoutil.UnmarshalOrPanic(channelGroup.GetValues()[channelconfig.HashingAlgorithmKey].Value).String()
+	// TODO genesis block exist before bccsp
 	if err != nil {
 		return nil, errors.WithMessage(err, "could not create channel group")
 	}
@@ -609,12 +612,6 @@ func New(config *genesisconfig.Profile) *Bootstrapper {
 		logger.Panicf("Error creating bootsrapper: %s", err)
 	}
 	return bs
-}
-
-// GenesisBlock produces a genesis block for the default test channel id
-func (bs *Bootstrapper) GenesisBlock() *cb.Block {
-	// TODO(mjs): remove
-	return genesis.NewFactoryImpl(bs.channelGroup).Block("testchannelid")
 }
 
 // GenesisBlockForChannel produces a genesis block for a given channel ID

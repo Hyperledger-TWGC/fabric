@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package genesis
 
 import (
+	"crypto/sha256"
 	"testing"
 
 	"github.com/golang/protobuf/proto"
@@ -16,7 +17,7 @@ import (
 )
 
 func TestFactory(t *testing.T) {
-	impl := NewFactoryImpl(protoutil.NewConfigGroup())
+	impl := NewFactoryImpl(protoutil.NewConfigGroup(), sha256.New())
 	block := impl.Block("testchannelid")
 
 	t.Run("test for transaction id", func(t *testing.T) {

@@ -231,7 +231,7 @@ func getMspConfig(dir string, ID string, sigid *msp.SigningIdentityInfo) (*msp.M
 	}
 
 	tlsCACerts, err := getPemMaterialFromDir(tlscacertDir)
-	tlsIntermediateCerts := [][]byte{}
+	var tlsIntermediateCerts [][]byte
 	if os.IsNotExist(err) {
 		mspLogger.Debugf("TLS CA certs folder not found at [%s]. Skipping and ignoring TLS intermediate CA folder. [%s]", tlsintermediatecertsDir, err)
 	} else if err != nil {

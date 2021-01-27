@@ -9,6 +9,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
+	"crypto/sha256"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -51,12 +52,12 @@ func createTx(endorsedByDuplicatedIdentity bool) (*common.Envelope, error) {
 	ccid := &peer.ChaincodeID{Name: "foo", Version: "v1"}
 	cis := &peer.ChaincodeInvocationSpec{ChaincodeSpec: &peer.ChaincodeSpec{ChaincodeId: ccid}}
 
-	prop, _, err := protoutil.CreateProposalFromCIS(common.HeaderType_ENDORSER_TRANSACTION, "testchannelid", cis, sid)
+	prop, _, err := protoutil.CreateChaincodeProposal(common.HeaderType_ENDORSER_TRANSACTION, "testchannelid", cis, sid, sha256.New())
 	if err != nil {
 		return nil, err
 	}
 
-	presp, err := protoutil.CreateProposalResponse(prop.Header, prop.Payload, &peer.Response{Status: 200}, []byte("res"), nil, ccid, id)
+	presp, err := protoutil.CreateProposalResponse(prop.Header, prop.Payload, &peer.Response{Status: 200}, []byte("res"), nil, ccid, id, sha256.New())
 	if err != nil {
 		return nil, err
 	}
@@ -229,7 +230,7 @@ func createLSCCTxPutCdsWithCollection(ccname, ccver, f string, res, cdsbytes []b
 		}
 	}
 
-	prop, _, err := protoutil.CreateProposalFromCIS(common.HeaderType_ENDORSER_TRANSACTION, "testchannelid", cis, sid)
+	prop, _, err := protoutil.CreateChaincodeProposal(common.HeaderType_ENDORSER_TRANSACTION, "testchannelid", cis, sid, sha256.New())
 	if err != nil {
 		return nil, err
 	}
@@ -286,14 +287,15 @@ func createLSCCTxPutCds(ccname, ccver, f string, res, cdsbytes []byte, putcds bo
 		}
 	}
 
-	prop, _, err := protoutil.CreateProposalFromCIS(common.HeaderType_ENDORSER_TRANSACTION, "testchannelid", cis, sid)
+	prop, _, err := protoutil.CreateChaincodeProposal(common.HeaderType_ENDORSER_TRANSACTION, "testchannelid", cis, sid, sha256.New())
 	if err != nil {
 		return nil, err
 	}
 
 	ccid := &peer.ChaincodeID{Name: ccname, Version: ccver}
 
-	presp, err := protoutil.CreateProposalResponse(prop.Header, prop.Payload, &peer.Response{Status: 200}, res, nil, ccid, id)
+	presp, err := protoutil.CreateProposalResponse(prop.Header, prop.Payload, &peer.Response{Status: 200}, res, nil,
+		ccid, id, sha256.New())
 	if err != nil {
 		return nil, err
 	}
@@ -878,12 +880,12 @@ func TestValidateDeployNOKNilChaincodeSpec(t *testing.T) {
 		},
 	}
 
-	prop, _, err := protoutil.CreateProposalFromCIS(common.HeaderType_ENDORSER_TRANSACTION, "testchannelid", cis, sid)
+	prop, _, err := protoutil.CreateChaincodeProposal(common.HeaderType_ENDORSER_TRANSACTION, "testchannelid", cis, sid, sha256.New())
 	require.NoError(t, err)
 
 	ccid := &peer.ChaincodeID{Name: ccname, Version: ccver}
 
-	presp, err := protoutil.CreateProposalResponse(prop.Header, prop.Payload, &peer.Response{Status: 200}, res, nil, ccid, id)
+	presp, err := protoutil.CreateProposalResponse(prop.Header, prop.Payload, &peer.Response{Status: 200}, res, nil, ccid, id, sha256.New())
 	require.NoError(t, err)
 
 	env, err := protoutil.CreateSignedTx(prop, id, presp)

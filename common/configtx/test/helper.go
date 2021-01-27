@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package test
 
 import (
+	"crypto/sha256"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	mspproto "github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric-protos-go/peer"
@@ -31,7 +32,7 @@ func MakeGenesisBlock(channelID string) (*cb.Block, error) {
 		logger.Panicf("Error creating channel config: %s", err)
 	}
 
-	gb := genesis.NewFactoryImpl(channelGroup).Block(channelID)
+	gb := genesis.NewFactoryImpl(channelGroup, sha256.New()).Block(channelID)
 	if gb == nil {
 		return gb, nil
 	}
@@ -81,5 +82,5 @@ func MakeGenesisBlockFromMSPs(channelID string, appMSPConf, ordererMSPConf *mspp
 	channelGroup.Groups[channelconfig.OrdererGroupKey].Groups[ordererOrgID] = ordererOrg
 	channelGroup.Groups[channelconfig.ApplicationGroupKey].Groups[appOrgID] = applicationOrg
 
-	return genesis.NewFactoryImpl(channelGroup).Block(channelID), nil
+	return genesis.NewFactoryImpl(channelGroup, sha256.New()).Block(channelID), nil
 }

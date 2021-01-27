@@ -205,7 +205,7 @@ func serve(args []string) error {
 
 	logger.Infof("Starting %s", version.GetInfo())
 
-	//obtain coreConfiguration
+	// obtain coreConfiguration
 	coreConfig, err := peer.GlobalConfig()
 	if err != nil {
 		return err
@@ -338,8 +338,8 @@ func serve(args []string) error {
 		mgmt.NewLocalMSPPrincipalGetter(factory.GetDefault()),
 	)
 
-	//startup aclmgmt with default ACL providers (resource based and default 1.0 policies based).
-	//Users can pass in their own ACLProvider to RegisterACLProvider (currently unit tests do this)
+	// startup aclmgmt with default ACL providers (resource based and default 1.0 policies based).
+	// Users can pass in their own ACLProvider to RegisterACLProvider (currently unit tests do this)
 	aclProvider := aclmgmt.NewACLProvider(
 		aclmgmt.ResourceGetter(peerInstance.GetStableChannelConfig),
 		policyChecker,
@@ -490,13 +490,13 @@ func serve(args []string) error {
 		}
 	}
 
-	metrics := deliver.NewMetrics(metricsProvider)
+	newMetrics := deliver.NewMetrics(metricsProvider)
 	abServer := &peer.DeliverServer{
 		DeliverHandler: deliver.NewHandler(
 			&peer.DeliverChainManager{Peer: peerInstance},
 			coreConfig.AuthenticationTimeWindow,
 			mutualTLS,
-			metrics,
+			newMetrics,
 			false,
 		),
 		PolicyCheckerProvider: policyCheckerProvider,
@@ -513,7 +513,7 @@ func serve(args []string) error {
 		logger.Panicf("Failed to create chaincode server: %s", err)
 	}
 
-	//get user mode
+	// get user mode
 	userRunsCC := chaincode.IsDevMode()
 	tlsEnabled := coreConfig.PeerTLSEnabled
 
@@ -745,6 +745,7 @@ func serve(args []string) error {
 		LocalMSP:               localMSP,
 		Support:                endorserSupport,
 		Metrics:                endorser.NewMetrics(metricsProvider),
+		BCCSP:                  factory.GetDefault(),
 	}
 
 	// deploy system chaincodes

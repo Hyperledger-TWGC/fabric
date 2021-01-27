@@ -7,8 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package protoutil
 
 import (
-	"crypto/sha256"
 	"encoding/hex"
+	"hash"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -20,38 +20,34 @@ import (
 
 // CreateChaincodeProposal creates a proposal from given input.
 // It returns the proposal and the transaction id associated to the proposal
-func CreateChaincodeProposal(typ common.HeaderType, channelID string, cis *peer.ChaincodeInvocationSpec, creator []byte) (*peer.Proposal, string, error) {
-	return CreateChaincodeProposalWithTransient(typ, channelID, cis, creator, nil)
-}
-
-// CreateChaincodeProposalWithTransient creates a proposal from given input
-// It returns the proposal and the transaction id associated to the proposal
-func CreateChaincodeProposalWithTransient(typ common.HeaderType, channelID string, cis *peer.ChaincodeInvocationSpec, creator []byte, transientMap map[string][]byte) (*peer.Proposal, string, error) {
+func CreateChaincodeProposal(typ common.HeaderType, channelID string, cis *peer.ChaincodeInvocationSpec, creator []byte, hasher hash.Hash) (*peer.Proposal, string, error) {
 	// generate a random nonce
-	nonce, err := getRandomNonce()
+	nonce, err := GetRandomNonce()
 	if err != nil {
 		return nil, "", err
 	}
 
 	// compute txid
-	txid := ComputeTxID(nonce, creator)
+	txid := ComputeTxID(nonce, creator, hasher)
 
-	return CreateChaincodeProposalWithTxIDNonceAndTransient(txid, typ, channelID, cis, nonce, creator, transientMap)
+	return CreateChaincodeProposalWithTxIDNonceAndTransient(txid, typ, channelID, cis, nonce, creator, nil)
 }
 
 // CreateChaincodeProposalWithTxIDAndTransient creates a proposal from given
 // input. It returns the proposal and the transaction id associated with the
 // proposal
-func CreateChaincodeProposalWithTxIDAndTransient(typ common.HeaderType, channelID string, cis *peer.ChaincodeInvocationSpec, creator []byte, txid string, transientMap map[string][]byte) (*peer.Proposal, string, error) {
+// TODO remove duplicate util
+// TODO group parameters into a shorter list
+func CreateChaincodeProposalWithTxIDAndTransient(typ common.HeaderType, channelID string, cis *peer.ChaincodeInvocationSpec, creator []byte, txid string, transientMap map[string][]byte, hasher hash.Hash) (*peer.Proposal, string, error) {
 	// generate a random nonce
-	nonce, err := getRandomNonce()
+	nonce, err := GetRandomNonce()
 	if err != nil {
 		return nil, "", err
 	}
 
 	// compute txid unless provided by tests
 	if txid == "" {
-		txid = ComputeTxID(nonce, creator)
+		txid = ComputeTxID(nonce, creator, hasher)
 	}
 
 	return CreateChaincodeProposalWithTxIDNonceAndTransient(txid, typ, channelID, cis, nonce, creator, transientMap)
@@ -228,22 +224,6 @@ func GetActionFromEnvelopeMsg(env *common.Envelope) (*peer.ChaincodeAction, erro
 	return respPayload, err
 }
 
-// CreateProposalFromCISAndTxid returns a proposal given a serialized identity
-// and a ChaincodeInvocationSpec
-func CreateProposalFromCISAndTxid(txid string, typ common.HeaderType, channelID string, cis *peer.ChaincodeInvocationSpec, creator []byte) (*peer.Proposal, string, error) {
-	nonce, err := getRandomNonce()
-	if err != nil {
-		return nil, "", err
-	}
-	return CreateChaincodeProposalWithTxIDNonceAndTransient(txid, typ, channelID, cis, nonce, creator, nil)
-}
-
-// CreateProposalFromCIS returns a proposal given a serialized identity and a
-// ChaincodeInvocationSpec
-func CreateProposalFromCIS(typ common.HeaderType, channelID string, cis *peer.ChaincodeInvocationSpec, creator []byte) (*peer.Proposal, string, error) {
-	return CreateChaincodeProposal(typ, channelID, cis, creator)
-}
-
 // CreateGetChaincodesProposal returns a GETCHAINCODES proposal given a
 // serialized identity
 func CreateGetChaincodesProposal(channelID string, creator []byte) (*peer.Proposal, string, error) {
@@ -255,7 +235,7 @@ func CreateGetChaincodesProposal(channelID string, creator []byte) (*peer.Propos
 			Input:       ccinp,
 		},
 	}
-	return CreateProposalFromCIS(common.HeaderType_ENDORSER_TRANSACTION, channelID, lsccSpec, creator)
+	return CreateChaincodeProposal(common.HeaderType_ENDORSER_TRANSACTION, channelID, lsccSpec, creator)
 }
 
 // CreateGetInstalledChaincodesProposal returns a GETINSTALLEDCHAINCODES
@@ -269,7 +249,7 @@ func CreateGetInstalledChaincodesProposal(creator []byte) (*peer.Proposal, strin
 			Input:       ccinp,
 		},
 	}
-	return CreateProposalFromCIS(common.HeaderType_ENDORSER_TRANSACTION, "", lsccSpec, creator)
+	return CreateChaincodeProposal(common.HeaderType_ENDORSER_TRANSACTION, "", lsccSpec, creator)
 }
 
 // CreateInstallProposalFromCDS returns a install proposal given a serialized
@@ -349,15 +329,12 @@ func createProposalFromCDS(channelID string, msg proto.Message, creator []byte, 
 	}
 
 	// ...and get the proposal for it
-	return CreateProposalFromCIS(common.HeaderType_ENDORSER_TRANSACTION, channelID, lsccSpec, creator)
+	return CreateChaincodeProposal(common.HeaderType_ENDORSER_TRANSACTION, channelID, lsccSpec, creator)
 }
 
 // ComputeTxID computes TxID as the Hash computed
 // over the concatenation of nonce and creator.
-func ComputeTxID(nonce, creator []byte) string {
-	// TODO: Get the Hash function to be used from
-	// channel configuration
-	hasher := sha256.New()
+func ComputeTxID(nonce, creator []byte, hasher hash.Hash) string {
 	hasher.Write(nonce)
 	hasher.Write(creator)
 	return hex.EncodeToString(hasher.Sum(nil))
@@ -365,8 +342,8 @@ func ComputeTxID(nonce, creator []byte) string {
 
 // CheckTxID checks that txid is equal to the Hash computed
 // over the concatenation of nonce and creator.
-func CheckTxID(txid string, nonce, creator []byte) error {
-	computedTxID := ComputeTxID(nonce, creator)
+func CheckTxID(txid string, nonce, creator []byte, hasher hash.Hash) error {
+	computedTxID := ComputeTxID(nonce, creator, hasher)
 
 	if txid != computedTxID {
 		return errors.Errorf("invalid txid. got [%s], expected [%s]", txid, computedTxID)

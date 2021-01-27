@@ -197,7 +197,7 @@ func (i *InstalledPackageGetter) createProposal() (*pb.Proposal, error) {
 		return nil, errors.WithMessage(err, "failed to serialize identity")
 	}
 
-	proposal, _, err := protoutil.CreateProposalFromCIS(cb.HeaderType_ENDORSER_TRANSACTION, "", cis, signerSerialized)
+	proposal, _, err := protoutil.CreateChaincodeProposal(cb.HeaderType_ENDORSER_TRANSACTION, "", cis, signerSerialized)
 	if err != nil {
 		return nil, errors.WithMessage(err, "failed to create ChaincodeInvocationSpec proposal")
 	}

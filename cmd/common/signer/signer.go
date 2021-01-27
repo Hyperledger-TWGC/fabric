@@ -33,9 +33,7 @@ type Config struct {
 }
 
 // Signer signs messages.
-// TODO: Ideally we'd use an MSP to be agnostic, but since it's impossible to
-// initialize an MSP without a CA cert that signs the signing identity,
-// this will do for now.
+// TODO: Ideally we'd use an MSP to be agnostic, but since it's impossible to initialize an MSP without a CA cert that signs the signing identity, this will do for now.
 type Signer struct {
 	key     *ecdsa.PrivateKey
 	Creator []byte

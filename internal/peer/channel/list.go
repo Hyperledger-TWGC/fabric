@@ -52,7 +52,7 @@ func (cc *endorserClient) getChannels() ([]*pb.ChannelInfo, error) {
 
 	var prop *pb.Proposal
 	c, _ := cc.cf.Signer.Serialize()
-	prop, _, err = protoutil.CreateProposalFromCIS(common2.HeaderType_ENDORSER_TRANSACTION, "", invocation, c)
+	prop, _, err = protoutil.CreateChaincodeProposal(common2.HeaderType_ENDORSER_TRANSACTION, "", invocation, c)
 	if err != nil {
 		return nil, fmt.Errorf("Cannot create proposal, due to %s", err)
 	}

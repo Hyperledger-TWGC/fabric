@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package endorser
 
 import (
-	"crypto/sha256"
+	"hash"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
@@ -40,7 +40,7 @@ func (up *UnpackedProposal) TxID() string {
 
 // UnpackProposal creates an an *UnpackedProposal which is guaranteed to have
 // no zero-ed fields or it returns an error.
-func UnpackProposal(signedProp *pb.SignedProposal) (*UnpackedProposal, error) {
+func UnpackProposal(signedProp *pb.SignedProposal, propHash hash.Hash) (*UnpackedProposal, error) {
 	prop, err := protoutil.UnmarshalProposal(signedProp.ProposalBytes)
 	if err != nil {
 		return nil, err
@@ -98,14 +98,11 @@ func UnpackProposal(signedProp *pb.SignedProposal) (*UnpackedProposal, error) {
 		return nil, errors.WithMessage(err, "could not marshal non-transient portion of payload")
 	}
 
-	// TODO, this was preserved from the proputils stuff, but should this be BCCSP?
-
 	// The proposal hash is the hash of the concatenation of:
 	// 1) The serialized Channel Header object
 	// 2) The serialized Signature Header object
 	// 3) The hash of the part of the chaincode proposal payload that will go to the tx
 	// (ie, the parts without the transient data)
-	propHash := sha256.New()
 	propHash.Write(hdr.ChannelHeader)
 	propHash.Write(hdr.SignatureHeader)
 	propHash.Write(ppBytes)
@@ -121,7 +118,7 @@ func UnpackProposal(signedProp *pb.SignedProposal) (*UnpackedProposal, error) {
 	}, nil
 }
 
-func (up *UnpackedProposal) Validate(idDeserializer msp.IdentityDeserializer) error {
+func (up *UnpackedProposal) Validate(idDeserializer msp.IdentityDeserializer, h hash.Hash) error {
 	logger := decorateLogger(endorserLogger, &ccprovider.TransactionParams{
 		ChannelID: up.ChannelHeader.ChannelId,
 		TxID:      up.TxID(),
@@ -154,7 +151,7 @@ func (up *UnpackedProposal) Validate(idDeserializer msp.IdentityDeserializer) er
 		return errors.New("creator is empty")
 	}
 
-	expectedTxID := protoutil.ComputeTxID(up.SignatureHeader.Nonce, up.SignatureHeader.Creator)
+	expectedTxID := protoutil.ComputeTxID(up.SignatureHeader.Nonce, up.SignatureHeader.Creator, h)
 	if up.TxID() != expectedTxID {
 		return errors.Errorf("incorrectly computed txid '%s' -- expected '%s'", up.TxID(), expectedTxID)
 	}

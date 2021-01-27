@@ -9,6 +9,7 @@ package chaincode
 import (
 	"context"
 	"crypto/tls"
+	"hash"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -34,6 +35,7 @@ type Committer struct {
 	DeliverClients  []pb.DeliverClient
 	Input           *CommitInput
 	Signer          Signer
+	hash.Hash
 }
 
 // CommitInput holds all of the input parameters for committing a
@@ -113,6 +115,10 @@ func CommitCmd(c *Committer, cryptoProvider bccsp.BCCSP) *cobra.Command {
 					endorserClients[i] = e
 				}
 
+				h, err := cryptoProvider.GetHash(nil)
+				if err != nil {
+					return err
+				}
 				c = &Committer{
 					Command:         cmd,
 					Input:           input,
@@ -121,6 +127,7 @@ func CommitCmd(c *Committer, cryptoProvider bccsp.BCCSP) *cobra.Command {
 					DeliverClients:  cc.DeliverClients,
 					EndorserClients: endorserClients,
 					Signer:          cc.Signer,
+					Hash:            h,
 				}
 			}
 			return c.Commit()

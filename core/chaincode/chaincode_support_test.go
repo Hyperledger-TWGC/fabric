@@ -10,6 +10,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
+	"crypto/sha256"
 	"errors"
 	"flag"
 	"fmt"
@@ -1335,7 +1336,11 @@ func endTxSimulationCIS(peerInstance *peer.Peer, channelID string, ccid *pb.Chai
 	}
 
 	// get a proposal - we need it to get a transaction
-	prop, returnedTxid, err := protoutil.CreateProposalFromCISAndTxid(txid, common.HeaderType_ENDORSER_TRANSACTION, channelID, cis, ss)
+	nonce, err := protoutil.GetRandomNonce()
+	if err != nil {
+		return err
+	}
+	prop, returnedTxid, err := protoutil.CreateChaincodeProposalWithTxIDNonceAndTransient(txid, common.HeaderType_ENDORSER_TRANSACTION, channelID, cis, nonce, ss, nil)
 	if err != nil {
 		return err
 	}
@@ -1374,8 +1379,7 @@ func endTxSimulation(peerInstance *peer.Peer, channelID string, ccid *pb.Chainco
 				return err
 			}
 			// assemble a (signed) proposal response message
-			resp, err := protoutil.CreateProposalResponse(prop.Header, prop.Payload, &pb.Response{Status: 200},
-				txSimulationBytes, nil, ccid, signer)
+			resp, err := protoutil.CreateProposalResponse(prop.Header, prop.Payload, &pb.Response{Status: 200}, txSimulationBytes, nil, ccid, signer, sha256.New())
 			if err != nil {
 				return err
 			}

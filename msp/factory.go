@@ -49,18 +49,7 @@ type IdemixNewOpts struct {
 func New(opts NewOpts, cryptoProvider bccsp.BCCSP) (MSP, error) {
 	switch opts.(type) {
 	case *BCCSPNewOpts:
-		switch opts.GetVersion() {
-		case MSPv1_0:
-			return newBccspMsp(MSPv1_0, cryptoProvider)
-		case MSPv1_1:
-			return newBccspMsp(MSPv1_1, cryptoProvider)
-		case MSPv1_3:
-			return newBccspMsp(MSPv1_3, cryptoProvider)
-		case MSPv1_4_3:
-			return newBccspMsp(MSPv1_4_3, cryptoProvider)
-		default:
-			return nil, errors.Errorf("Invalid *BCCSPNewOpts. Version not recognized [%v]", opts.GetVersion())
-		}
+		return newBccspMsp(opts.GetVersion(), cryptoProvider)
 	case *IdemixNewOpts:
 		switch opts.GetVersion() {
 		case MSPv1_4_3:

@@ -186,7 +186,7 @@ func GetOrdererEndpointOfChain(chainID string, signer Signer, endorserClient pb.
 		return nil, errors.WithMessage(err, "error serializing identity for signer")
 	}
 
-	prop, _, err := protoutil.CreateProposalFromCIS(pcommon.HeaderType_CONFIG, "", invocation, creator)
+	prop, _, err := protoutil.CreateChaincodeProposal(pcommon.HeaderType_CONFIG, "", invocation, creator)
 	if err != nil {
 		return nil, errors.WithMessage(err, "error creating GetChannelConfig proposal")
 	}

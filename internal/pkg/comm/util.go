@@ -12,6 +12,7 @@ import (
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/pem"
+	"hash"
 	"net"
 
 	"github.com/golang/protobuf/proto"
@@ -91,7 +92,7 @@ func mutualTLSBinding(ctx context.Context, claimedTLScertHash []byte) error {
 	if len(claimedTLScertHash) == 0 {
 		return errors.Errorf("client didn't include its TLS cert hash")
 	}
-	actualTLScertHash := ExtractCertificateHashFromContext(ctx)
+	actualTLScertHash := ExtractCertificateHashFromContext(ctx, sha256.New())
 	if len(actualTLScertHash) == 0 {
 		return errors.Errorf("client didn't send a TLS certificate")
 	}
@@ -108,12 +109,11 @@ func noopBinding(_ context.Context, _ []byte) error {
 
 // ExtractCertificateHashFromContext extracts the hash of the certificate from the given context.
 // If the certificate isn't present, nil is returned
-func ExtractCertificateHashFromContext(ctx context.Context) []byte {
+func ExtractCertificateHashFromContext(ctx context.Context, h hash.Hash) []byte {
 	rawCert := ExtractRawCertificateFromContext(ctx)
 	if len(rawCert) == 0 {
 		return nil
 	}
-	h := sha256.New()
 	h.Write(rawCert)
 	return h.Sum(nil)
 }

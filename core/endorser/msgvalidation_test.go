@@ -7,8 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package endorser_test
 
 import (
+	"crypto/sha256"
 	"fmt"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
@@ -154,7 +154,7 @@ var _ = Describe("UnpackProposal", func() {
 	})
 
 	It("unmarshals the signed proposal into the interesting bits and returns them as a struct", func() {
-		up, err := endorser.UnpackProposal(signedProposal)
+		up, err := endorser.UnpackProposal(signedProposal, sha256.New())
 		Expect(err).NotTo(HaveOccurred())
 		Expect(up.ChaincodeName).To(Equal("chaincode-name"))
 		Expect(up.SignedProposal).To(Equal(signedProposal))
@@ -172,7 +172,7 @@ var _ = Describe("UnpackProposal", func() {
 		})
 
 		It("wraps and returns an error", func() {
-			_, err := endorser.UnpackProposal(signedProposal)
+			_, err := endorser.UnpackProposal(signedProposal, sha256.New())
 			Expect(err).To(MatchError("error unmarshaling Proposal: proto: can't skip unknown wire type 7"))
 		})
 	})
@@ -185,7 +185,7 @@ var _ = Describe("UnpackProposal", func() {
 		})
 
 		It("wraps and returns the error", func() {
-			_, err := endorser.UnpackProposal(signedProposal)
+			_, err := endorser.UnpackProposal(signedProposal, sha256.New())
 			Expect(err).To(MatchError("error unmarshaling Header: proto: can't skip unknown wire type 7"))
 		})
 	})
@@ -198,7 +198,7 @@ var _ = Describe("UnpackProposal", func() {
 		})
 
 		It("wraps and returns an error", func() {
-			_, err := endorser.UnpackProposal(signedProposal)
+			_, err := endorser.UnpackProposal(signedProposal, sha256.New())
 			Expect(err).To(MatchError("error unmarshaling ChannelHeader: proto: can't skip unknown wire type 7"))
 		})
 	})
@@ -211,7 +211,7 @@ var _ = Describe("UnpackProposal", func() {
 		})
 
 		It("wraps and returns an error", func() {
-			_, err := endorser.UnpackProposal(signedProposal)
+			_, err := endorser.UnpackProposal(signedProposal, sha256.New())
 			Expect(err).To(MatchError("error unmarshaling SignatureHeader: proto: can't skip unknown wire type 7"))
 		})
 	})
@@ -224,7 +224,7 @@ var _ = Describe("UnpackProposal", func() {
 		})
 
 		It("wraps and returns an error", func() {
-			_, err := endorser.UnpackProposal(signedProposal)
+			_, err := endorser.UnpackProposal(signedProposal, sha256.New())
 			Expect(err).To(MatchError("error unmarshaling ChaincodeHeaderExtension: proto: can't skip unknown wire type 7"))
 		})
 	})
@@ -237,7 +237,7 @@ var _ = Describe("UnpackProposal", func() {
 		})
 
 		It("wraps and returns an error", func() {
-			_, err := endorser.UnpackProposal(signedProposal)
+			_, err := endorser.UnpackProposal(signedProposal, sha256.New())
 			Expect(err).To(MatchError("error unmarshaling ChaincodeProposalPayload: proto: can't skip unknown wire type 7"))
 		})
 	})
@@ -248,7 +248,7 @@ var _ = Describe("UnpackProposal", func() {
 		})
 
 		It("wraps and returns an error", func() {
-			_, err := endorser.UnpackProposal(signedProposal)
+			_, err := endorser.UnpackProposal(signedProposal, sha256.New())
 			Expect(err).To(MatchError("ChaincodeHeaderExtension.ChaincodeId is nil"))
 		})
 	})
@@ -259,7 +259,7 @@ var _ = Describe("UnpackProposal", func() {
 		})
 
 		It("wraps and returns an error", func() {
-			_, err := endorser.UnpackProposal(signedProposal)
+			_, err := endorser.UnpackProposal(signedProposal, sha256.New())
 			Expect(err).To(MatchError("ChaincodeHeaderExtension.ChaincodeId.Name is empty"))
 		})
 	})
@@ -272,7 +272,7 @@ var _ = Describe("UnpackProposal", func() {
 		})
 
 		It("wraps and returns an error", func() {
-			_, err := endorser.UnpackProposal(signedProposal)
+			_, err := endorser.UnpackProposal(signedProposal, sha256.New())
 			Expect(err).To(MatchError("error unmarshaling ChaincodeInvocationSpec: proto: can't skip unknown wire type 7"))
 		})
 	})
@@ -283,7 +283,7 @@ var _ = Describe("UnpackProposal", func() {
 		})
 
 		It("wraps and returns an error", func() {
-			_, err := endorser.UnpackProposal(signedProposal)
+			_, err := endorser.UnpackProposal(signedProposal, sha256.New())
 			Expect(err).To(MatchError("chaincode invocation spec did not contain chaincode spec"))
 		})
 	})
@@ -294,7 +294,7 @@ var _ = Describe("UnpackProposal", func() {
 		})
 
 		It("wraps and returns an error", func() {
-			_, err := endorser.UnpackProposal(signedProposal)
+			_, err := endorser.UnpackProposal(signedProposal, sha256.New())
 			Expect(err).To(MatchError("chaincode input did not contain any input"))
 		})
 	})

@@ -16,6 +16,7 @@ import (
 const pkcs11Enabled = false
 
 // FactoryOpts holds configuration information used to initialize factory implementations
+// TODO This is a hardcode struct than pluggable
 type FactoryOpts struct {
 	Default string  `json:"default" yaml:"Default"`
 	SW      *SwOpts `json:"SW,omitempty" yaml:"SW,omitempty"`

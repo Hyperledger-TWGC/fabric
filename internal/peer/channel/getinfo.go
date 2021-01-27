@@ -50,7 +50,7 @@ func (cc *endorserClient) getBlockChainInfo() (*cb.BlockchainInfo, error) {
 
 	var prop *pb.Proposal
 	c, _ := cc.cf.Signer.Serialize()
-	prop, _, err = protoutil.CreateProposalFromCIS(cb.HeaderType_ENDORSER_TRANSACTION, "", invocation, c)
+	prop, _, err = protoutil.CreateChaincodeProposal(cb.HeaderType_ENDORSER_TRANSACTION, "", invocation, c)
 	if err != nil {
 		return nil, errors.WithMessage(err, "cannot create proposal")
 	}

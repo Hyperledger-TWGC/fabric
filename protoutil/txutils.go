@@ -9,11 +9,11 @@ package protoutil
 import (
 	"bytes"
 	"crypto/sha256"
-
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/pkg/errors"
+	"hash"
 )
 
 // GetPayloads gets the underlying payload objects in a TransactionAction
@@ -237,6 +237,7 @@ func CreateSignedTx(
 }
 
 // CreateProposalResponse creates a proposal response.
+// used in tests only
 func CreateProposalResponse(
 	hdrbytes []byte,
 	payl []byte,
@@ -245,6 +246,7 @@ func CreateProposalResponse(
 	events []byte,
 	ccid *peer.ChaincodeID,
 	signingEndorser Signer,
+	h hash.Hash,
 ) (*peer.ProposalResponse, error) {
 	hdr, err := UnmarshalHeader(hdrbytes)
 	if err != nil {
@@ -253,7 +255,7 @@ func CreateProposalResponse(
 
 	// obtain the proposal hash given proposal header, payload and the
 	// requested visibility
-	pHashBytes, err := GetProposalHash1(hdr, payl)
+	pHashBytes, err := GetProposalHash1(hdr, payl, h)
 	if err != nil {
 		return nil, errors.WithMessage(err, "error computing proposal hash")
 	}
@@ -304,6 +306,7 @@ func CreateProposalResponseFailure(
 	results []byte,
 	events []byte,
 	chaincodeName string,
+	h hash.Hash,
 ) (*peer.ProposalResponse, error) {
 	hdr, err := UnmarshalHeader(hdrbytes)
 	if err != nil {
@@ -311,7 +314,7 @@ func CreateProposalResponseFailure(
 	}
 
 	// obtain the proposal hash given proposal header, payload and the requested visibility
-	pHashBytes, err := GetProposalHash1(hdr, payl)
+	pHashBytes, err := GetProposalHash1(hdr, payl, h)
 	if err != nil {
 		return nil, errors.WithMessage(err, "error computing proposal hash")
 	}
@@ -364,7 +367,7 @@ func MockSignedEndorserProposalOrPanic(
 		common.HeaderType_ENDORSER_TRANSACTION,
 		channelID,
 		&peer.ChaincodeInvocationSpec{ChaincodeSpec: cs},
-		creator)
+		creator,sha256.New())
 	if err != nil {
 		panic(err)
 	}
@@ -390,8 +393,9 @@ func MockSignedEndorserProposal2OrPanic(
 	prop, _, err := CreateChaincodeProposal(
 		common.HeaderType_ENDORSER_TRANSACTION,
 		channelID,
-		&peer.ChaincodeInvocationSpec{ChaincodeSpec: &peer.ChaincodeSpec{}},
-		serializedSigner)
+		&peer.ChaincodeInvocationSpec{ChaincodeSpec: cs},
+		serializedSigner, sha256.New(),
+	)
 	if err != nil {
 		panic(err)
 	}
@@ -428,7 +432,7 @@ func GetBytesProposalPayloadForTx(
 // is called by the committer where the visibility policy
 // has already been enforced and so we already get what
 // we have to get in ccPropPayl
-func GetProposalHash2(header *common.Header, ccPropPayl []byte) ([]byte, error) {
+func GetProposalHash2(header *common.Header, ccPropPayl []byte, h hash.Hash) ([]byte, error) {
 	// check for nil argument
 	if header == nil ||
 		header.ChannelHeader == nil ||
@@ -437,19 +441,19 @@ func GetProposalHash2(header *common.Header, ccPropPayl []byte) ([]byte, error) 
 		return nil, errors.New("nil arguments")
 	}
 
-	hash := sha256.New()
+	h.Reset()
 	// hash the serialized Channel Header object
-	hash.Write(header.ChannelHeader)
+	h.Write(header.ChannelHeader)
 	// hash the serialized Signature Header object
-	hash.Write(header.SignatureHeader)
+	h.Write(header.SignatureHeader)
 	// hash the bytes of the chaincode proposal payload that we are given
-	hash.Write(ccPropPayl)
-	return hash.Sum(nil), nil
+	h.Write(ccPropPayl)
+	return h.Sum(nil), nil
 }
 
 // GetProposalHash1 gets the proposal hash bytes after sanitizing the
 // chaincode proposal payload according to the rules of visibility
-func GetProposalHash1(header *common.Header, ccPropPayl []byte) ([]byte, error) {
+func GetProposalHash1(header *common.Header, ccPropPayl []byte, h hash.Hash) ([]byte, error) {
 	// check for nil argument
 	if header == nil ||
 		header.ChannelHeader == nil ||
@@ -469,20 +473,20 @@ func GetProposalHash1(header *common.Header, ccPropPayl []byte) ([]byte, error) 
 		return nil, err
 	}
 
-	hash2 := sha256.New()
+	h.Reset()
 	// hash the serialized Channel Header object
-	hash2.Write(header.ChannelHeader)
+	h.Write(header.ChannelHeader)
 	// hash the serialized Signature Header object
-	hash2.Write(header.SignatureHeader)
+	h.Write(header.SignatureHeader)
 	// hash of the part of the chaincode proposal payload that will go to the tx
-	hash2.Write(ppBytes)
-	return hash2.Sum(nil), nil
+	h.Write(ppBytes)
+	return h.Sum(nil), nil
 }
 
 // GetOrComputeTxIDFromEnvelope gets the txID present in a given transaction
 // envelope. If the txID is empty, it constructs the txID from nonce and
 // creator fields in the envelope.
-func GetOrComputeTxIDFromEnvelope(txEnvelopBytes []byte) (string, error) {
+func GetOrComputeTxIDFromEnvelope(txEnvelopBytes []byte, h hash.Hash) (string, error) {
 	txEnvelope, err := UnmarshalEnvelope(txEnvelopBytes)
 	if err != nil {
 		return "", errors.WithMessage(err, "error getting txID from envelope")
@@ -511,6 +515,6 @@ func GetOrComputeTxIDFromEnvelope(txEnvelopBytes []byte) (string, error) {
 		return "", errors.WithMessage(err, "error getting nonce and creator for computing txID")
 	}
 
-	txid := ComputeTxID(sighdr.Nonce, sighdr.Creator)
+	txid := ComputeTxID(sighdr.Nonce, sighdr.Creator, h)
 	return txid, nil
 }

@@ -208,7 +208,7 @@ func TestWriteConfigBlock(t *testing.T) {
 
 func TestGoodWriteConfig(t *testing.T) {
 	confSys := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())
-	genesisBlockSys := encoder.New(confSys).GenesisBlock()
+	genesisBlockSys := encoder.New(confSys).GenesisBlockForChannel("testchannelid")
 
 	tmpdir, err := ioutil.TempDir("", "file-ledger")
 	require.NoError(t, err)
@@ -255,7 +255,7 @@ func TestGoodWriteConfig(t *testing.T) {
 
 func TestMigrationWriteConfig(t *testing.T) {
 	confSys := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())
-	genesisBlockSys := encoder.New(confSys).GenesisBlock()
+	genesisBlockSys := encoder.New(confSys).GenesisBlockForChannel("testchannelid")
 
 	tmpdir, err := ioutil.TempDir("", "file-ledger")
 	require.NoError(t, err)
@@ -303,7 +303,7 @@ func TestMigrationWriteConfig(t *testing.T) {
 
 func TestRaceWriteConfig(t *testing.T) {
 	confSys := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())
-	genesisBlockSys := encoder.New(confSys).GenesisBlock()
+	genesisBlockSys := encoder.New(confSys).GenesisBlockForChannel("testchannelid")
 
 	tmpdir, err := ioutil.TempDir("", "file-ledger")
 	require.NoError(t, err)

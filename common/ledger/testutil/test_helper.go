@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package testutil
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"testing"
 
@@ -317,12 +318,12 @@ func constructBytesProposalResponsePayload(channelID string, ccid *pb.ChaincodeI
 		return nil, err
 	}
 
-	prop, _, err := protoutil.CreateChaincodeProposal(common.HeaderType_ENDORSER_TRANSACTION, channelID, &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: ccid}}, ss)
+	prop, _, err := protoutil.CreateChaincodeProposal(common.HeaderType_ENDORSER_TRANSACTION, channelID, &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: ccid}}, ss, sha256.New())
 	if err != nil {
 		return nil, err
 	}
 
-	presp, err := protoutil.CreateProposalResponse(prop.Header, prop.Payload, pResponse, simulationResults, nil, ccid, signer)
+	presp, err := protoutil.CreateProposalResponse(prop.Header, prop.Payload, pResponse, simulationResults, nil, ccid, signer, sha256.New())
 	if err != nil {
 		return nil, err
 	}
@@ -412,6 +413,7 @@ func ConstructSignedTxEnv(
 				},
 			},
 			ss,
+			sha256.New(),
 		)
 
 	} else {
@@ -447,6 +449,7 @@ func ConstructSignedTxEnv(
 		nil,
 		ccid,
 		signer,
+		sha256.New(),
 	)
 	if err != nil {
 		return nil, "", err

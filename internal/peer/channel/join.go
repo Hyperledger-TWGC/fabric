@@ -85,7 +85,7 @@ func executeJoin(cf *ChannelCmdFactory, spec *pb.ChaincodeSpec) (err error) {
 	}
 
 	var prop *pb.Proposal
-	prop, _, err = protoutil.CreateProposalFromCIS(pcommon.HeaderType_CONFIG, "", invocation, creator)
+	prop, _, err = protoutil.CreateChaincodeProposal(pcommon.HeaderType_CONFIG, "", invocation, creator)
 	if err != nil {
 		return fmt.Errorf("Error creating proposal for join %s", err)
 	}

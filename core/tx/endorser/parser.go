@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package endorsertx
 
 import (
+	"hash"
 	"regexp"
 
 	"github.com/hyperledger/fabric-protos-go/peer"
@@ -39,7 +40,8 @@ type EndorserTx struct {
 	Nonce        []byte
 }
 
-func unmarshalEndorserTx(txenv *tx.Envelope) (*EndorserTx, error) {
+// TODO This is not used anywhere expect for test cases
+func unmarshalEndorserTx(txenv *tx.Envelope, h hash.Hash) (*EndorserTx, error) {
 
 	if len(txenv.ChannelHeader.Extension) == 0 {
 		return nil, errors.New("empty header extension")
@@ -104,10 +106,7 @@ func unmarshalEndorserTx(txenv *tx.Envelope) (*EndorserTx, error) {
 		return nil, err
 	}
 
-	computedTxID := protoutil.ComputeTxID(
-		txenv.SignatureHeader.Nonce,
-		txenv.SignatureHeader.Creator,
-	)
+	computedTxID := protoutil.ComputeTxID(txenv.SignatureHeader.Nonce, txenv.SignatureHeader.Creator, h)
 
 	return &EndorserTx{
 		ComputedTxID: computedTxID,
@@ -167,8 +166,9 @@ func (e *EndorserTx) validate() error {
 // UnmarshalEndorserTxAndValidate receives a tx.Envelope containing
 // a partially unmarshalled endorser transaction and returns an EndorserTx
 // instance (or an error)
-func UnmarshalEndorserTxAndValidate(txenv *tx.Envelope) (*EndorserTx, error) {
-	etx, err := unmarshalEndorserTx(txenv)
+// TODO This is not used anywhere expect for test cases
+func UnmarshalEndorserTxAndValidate(txenv *tx.Envelope, h hash.Hash) (*EndorserTx, error) {
+	etx, err := unmarshalEndorserTx(txenv, h)
 	if err != nil {
 		return nil, err
 	}

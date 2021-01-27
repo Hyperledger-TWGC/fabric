@@ -196,7 +196,7 @@ func (i *Installer) createInstallProposal(pkgBytes []byte, creatorBytes []byte) 
 		},
 	}
 
-	proposal, _, err := protoutil.CreateProposalFromCIS(cb.HeaderType_ENDORSER_TRANSACTION, "", cis, creatorBytes)
+	proposal, _, err := protoutil.CreateChaincodeProposal(cb.HeaderType_ENDORSER_TRANSACTION, "", cis, creatorBytes)
 	if err != nil {
 		return nil, errors.WithMessage(err, "failed to create proposal for ChaincodeInvocationSpec")
 	}

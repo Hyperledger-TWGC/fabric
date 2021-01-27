@@ -9,6 +9,7 @@ package genesis
 import (
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/protoutil"
+	"hash"
 )
 
 const (
@@ -26,25 +27,30 @@ type Factory interface {
 
 type factory struct {
 	channelGroup *cb.ConfigGroup
+	hash.Hash
 }
 
 // NewFactoryImpl creates a new Factory.
-func NewFactoryImpl(channelGroup *cb.ConfigGroup) Factory {
-	return &factory{channelGroup: channelGroup}
+func NewFactoryImpl(channelGroup *cb.ConfigGroup, h hash.Hash) Factory {
+	return &factory{channelGroup, h}
 }
 
 // Block constructs and returns a genesis block for a given channel ID.
 func (f *factory) Block(channelID string) *cb.Block {
 	payloadChannelHeader := protoutil.MakeChannelHeader(cb.HeaderType_CONFIG, msgVersion, channelID, epoch)
 	payloadSignatureHeader := protoutil.MakeSignatureHeader(nil, protoutil.CreateNonceOrPanic())
-	protoutil.SetTxID(payloadChannelHeader, payloadSignatureHeader)
+	payloadChannelHeader.TxId = protoutil.ComputeTxID(
+		payloadSignatureHeader.Nonce,
+		payloadSignatureHeader.Creator,
+		f.Hash,
+	)
 	payloadHeader := protoutil.MakePayloadHeader(payloadChannelHeader, payloadSignatureHeader)
 	payload := &cb.Payload{Header: payloadHeader, Data: protoutil.MarshalOrPanic(&cb.ConfigEnvelope{Config: &cb.Config{ChannelGroup: f.channelGroup}})}
 	envelope := &cb.Envelope{Payload: protoutil.MarshalOrPanic(payload), Signature: nil}
 
 	block := protoutil.NewBlock(0, nil)
 	block.Data = &cb.BlockData{Data: [][]byte{protoutil.MarshalOrPanic(envelope)}}
-	block.Header.DataHash = protoutil.BlockDataHash(block.Data)
+	block.Header.DataHash = protoutil.BlockDataHash(block.Data, f.Hash)
 	block.Metadata.Metadata[cb.BlockMetadataIndex_LAST_CONFIG] = protoutil.MarshalOrPanic(&cb.Metadata{
 		Value: protoutil.MarshalOrPanic(&cb.LastConfig{Index: 0}),
 	})

@@ -9,6 +9,7 @@ package endorser
 import (
 	"context"
 	"fmt"
+	"github.com/hyperledger/fabric/bccsp"
 	"strconv"
 	"time"
 
@@ -100,6 +101,7 @@ type Endorser struct {
 	Support                Support
 	PvtRWSetAssembler      PvtRWSetAssembler
 	Metrics                *Metrics
+	bccsp.BCCSP
 }
 
 // call specified chaincode (system or user)
@@ -304,7 +306,11 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 	// variables to capture proposal duration metric
 	success := false
 
-	up, err := UnpackProposal(signedProp)
+	propHash, err := e.BCCSP.GetHash(nil)
+	if err != nil {
+		return nil, err
+	}
+	up, err := UnpackProposal(signedProp, propHash)
 	if err != nil {
 		e.Metrics.ProposalValidationFailed.Add(1)
 		return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, err

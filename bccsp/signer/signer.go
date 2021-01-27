@@ -76,3 +76,7 @@ func (s *bccspCryptoSigner) Public() crypto.PublicKey {
 func (s *bccspCryptoSigner) Sign(rand io.Reader, digest []byte, opts crypto.SignerOpts) ([]byte, error) {
 	return s.csp.Sign(s.key, digest, opts)
 }
+
+func (s *bccspCryptoSigner) Serialize() ([]byte, error) {
+	return s.key.Bytes()
+}

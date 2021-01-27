@@ -8,8 +8,8 @@ package protoutil
 
 import (
 	"bytes"
-	"crypto/sha256"
 	"encoding/asn1"
+	"hash"
 	"math/big"
 
 	"github.com/golang/protobuf/proto"
@@ -57,14 +57,16 @@ func BlockHeaderBytes(b *cb.BlockHeader) []byte {
 	return result
 }
 
-func BlockHeaderHash(b *cb.BlockHeader) []byte {
-	sum := sha256.Sum256(BlockHeaderBytes(b))
-	return sum[:]
+func BlockHeaderHash(b *cb.BlockHeader, h hash.Hash) []byte {
+	h.Reset()
+	h.Write(BlockHeaderBytes(b))
+	return h.Sum(nil)
 }
 
-func BlockDataHash(b *cb.BlockData) []byte {
-	sum := sha256.Sum256(bytes.Join(b.Data, nil))
-	return sum[:]
+func BlockDataHash(b *cb.BlockData, h hash.Hash) []byte {
+	h.Reset()
+	h.Write(bytes.Join(b.Data, nil))
+	return h.Sum(nil)
 }
 
 // GetChannelIDFromBlockBytes returns channel ID given byte array which represents

@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package protoutil_test
 
 import (
+	"crypto/sha256"
 	"encoding/hex"
 	"errors"
 	"strconv"
@@ -407,8 +408,7 @@ func TestMockSignedEndorserProposal2OrPanic(t *testing.T) {
 	signID := &fakes.SignerSerializer{}
 	signID.SignReturns(sig, nil)
 
-	signedProp, prop = protoutil.MockSignedEndorserProposal2OrPanic(chainID,
-		&pb.ChaincodeSpec{}, signID)
+	signedProp, prop = protoutil.MockSignedEndorserProposal2OrPanic(chainID, &pb.ChaincodeSpec{}, signID)
 	require.Equal(t, sig, signedProp.Signature,
 		"Signature did not match expected result")
 	propBytes, _ := proto.Marshal(prop)
@@ -444,11 +444,11 @@ func TestGetProposalHash2(t *testing.T) {
 		ChannelHeader:   []byte("chdr"),
 		SignatureHeader: []byte("shdr"),
 	}
-	propHash, err := protoutil.GetProposalHash2(hdr, []byte("ccproppayload"))
+	propHash, err := protoutil.GetProposalHash2(hdr, []byte("ccproppayload"), sha256.New())
 	require.NoError(t, err, "Unexpected error getting hash2 for proposal")
 	require.Equal(t, expectedHash, propHash, "Proposal hash did not match expected hash")
 
-	_, err = protoutil.GetProposalHash2(&cb.Header{}, []byte("ccproppayload"))
+	_, err = protoutil.GetProposalHash2(&cb.Header{}, []byte("ccproppayload"), sha256.New())
 	require.Error(t, err, "Expected error with nil arguments")
 }
 
@@ -462,20 +462,20 @@ func TestGetProposalHash1(t *testing.T) {
 
 	ccProposal, _ := proto.Marshal(&pb.ChaincodeProposalPayload{})
 
-	propHash, err := protoutil.GetProposalHash1(hdr, ccProposal)
+	propHash, err := protoutil.GetProposalHash1(hdr, ccProposal, sha256.New())
 	require.NoError(t, err, "Unexpected error getting hash for proposal")
 	require.Equal(t, expectedHash, propHash, "Proposal hash did not match expected hash")
 
-	_, err = protoutil.GetProposalHash1(hdr, []byte("ccproppayload"))
+	_, err = protoutil.GetProposalHash1(hdr, []byte("ccproppayload"), sha256.New())
 	require.Error(t, err, "Expected error with malformed chaincode proposal payload")
 
-	_, err = protoutil.GetProposalHash1(&cb.Header{}, []byte("ccproppayload"))
+	_, err = protoutil.GetProposalHash1(&cb.Header{}, []byte("ccproppayload"), sha256.New())
 	require.Error(t, err, "Expected error with nil arguments")
 }
 
 func TestCreateProposalResponseFailure(t *testing.T) {
 	// create a proposal from a ChaincodeInvocationSpec
-	prop, _, err := protoutil.CreateChaincodeProposal(cb.HeaderType_ENDORSER_TRANSACTION, testChannelID, createCIS(), signerSerialized)
+	prop, _, err := protoutil.CreateChaincodeProposal(cb.HeaderType_ENDORSER_TRANSACTION, testChannelID, createCIS(), signerSerialized, sha256.New())
 	if err != nil {
 		t.Fatalf("Could not create chaincode proposal, err %s\n", err)
 		return
@@ -484,7 +484,7 @@ func TestCreateProposalResponseFailure(t *testing.T) {
 	response := &pb.Response{Status: 502, Payload: []byte("Invalid function name")}
 	result := []byte("res")
 
-	prespFailure, err := protoutil.CreateProposalResponseFailure(prop.Header, prop.Payload, response, result, nil, "foo")
+	prespFailure, err := protoutil.CreateProposalResponseFailure(prop.Header, prop.Payload, response, result, nil, "foo", sha256.New())
 	if err != nil {
 		t.Fatalf("Could not create proposal response failure, err %s\n", err)
 		return

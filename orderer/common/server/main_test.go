@@ -1115,7 +1115,7 @@ func TestInitializeEtcdraftConsenter(t *testing.T) {
 	require.NoError(t, err)
 
 	conf := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())
-	genesisBlock := encoder.New(conf).GenesisBlock()
+	genesisBlock := encoder.New(conf).GenesisBlockForChannel("testchannelid")
 
 	ca, _ := tlsgen.NewCA()
 	crt, _ := ca.NewServerCertKeyPair("127.0.0.1")

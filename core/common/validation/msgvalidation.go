@@ -8,6 +8,7 @@ package validation
 
 import (
 	"bytes"
+	"hash"
 
 	"github.com/hyperledger/fabric-protos-go/common"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
@@ -162,7 +163,7 @@ func validateConfigTransaction(data []byte, hdr *common.Header) error {
 
 // validateEndorserTransaction validates the payload of a
 // transaction assuming its type is ENDORSER_TRANSACTION
-func validateEndorserTransaction(data []byte, hdr *common.Header) error {
+func validateEndorserTransaction(data []byte, hdr *common.Header, h hash.Hash) error {
 	putilsLogger.Debugf("validateEndorserTransaction starts for data %p, header %s", data, hdr)
 
 	// check for nil argument
@@ -230,7 +231,7 @@ func validateEndorserTransaction(data []byte, hdr *common.Header) error {
 		hdrOrig := &common.Header{ChannelHeader: hdr.ChannelHeader, SignatureHeader: act.Header}
 
 		// compute proposalHash
-		pHash, err := protoutil.GetProposalHash2(hdrOrig, ccActionPayload.ChaincodeProposalPayload)
+		pHash, err := protoutil.GetProposalHash2(hdrOrig, ccActionPayload.ChaincodeProposalPayload, h)
 		if err != nil {
 			return err
 		}
@@ -282,20 +283,26 @@ func ValidateTransaction(e *common.Envelope, cryptoProvider bccsp.BCCSP) (*commo
 	// continue the validation in a way that depends on the type specified in the header
 	switch common.HeaderType(chdr.Type) {
 	case common.HeaderType_ENDORSER_TRANSACTION:
+		h, err := cryptoProvider.GetHash(nil)
+		if err != nil {
+			return nil, pb.TxValidationCode_INVALID_OTHER_REASON
+		}
 		// Verify that the transaction ID has been computed properly.
 		// This check is needed to ensure that the lookup into the ledger
 		// for the same TxID catches duplicates.
 		err = protoutil.CheckTxID(
 			chdr.TxId,
 			shdr.Nonce,
-			shdr.Creator)
+			shdr.Creator,
+			h,
+		)
 
 		if err != nil {
 			putilsLogger.Errorf("CheckTxID returns err %s", err)
 			return nil, pb.TxValidationCode_BAD_PROPOSAL_TXID
 		}
 
-		err = validateEndorserTransaction(payload.Data, payload.Header)
+		err = validateEndorserTransaction(payload.Data, payload.Header, h)
 		putilsLogger.Debugf("ValidateTransactionEnvelope returns err %s", err)
 
 		if err != nil {

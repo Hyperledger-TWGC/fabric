@@ -8,6 +8,7 @@ package chaincode
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"testing"
@@ -283,7 +284,7 @@ func getMockChaincodeCmdFactoryEndorsementFailure(ccRespStatus int32, ccRespPayl
 	}
 
 	// create a proposal from a ChaincodeInvocationSpec
-	prop, _, err := protoutil.CreateChaincodeProposal(cb.HeaderType_ENDORSER_TRANSACTION, "testchannelid", createCIS(), nil)
+	prop, _, err := protoutil.CreateChaincodeProposal(cb.HeaderType_ENDORSER_TRANSACTION, "testchannelid", createCIS(), nil, sha256.New())
 	if err != nil {
 		return nil, fmt.Errorf("Could not create chaincode proposal, err %s\n", err)
 	}
@@ -291,7 +292,7 @@ func getMockChaincodeCmdFactoryEndorsementFailure(ccRespStatus int32, ccRespPayl
 	response := &pb.Response{Status: ccRespStatus, Payload: ccRespPayload}
 	result := []byte("res")
 
-	mockRespFailure, err := protoutil.CreateProposalResponseFailure(prop.Header, prop.Payload, response, result, nil, "foo")
+	mockRespFailure, err := protoutil.CreateProposalResponseFailure(prop.Header, prop.Payload, response, result, nil, "foo", sha256.New())
 	if err != nil {
 
 		return nil, fmt.Errorf("Could not create proposal response failure, err %s\n", err)

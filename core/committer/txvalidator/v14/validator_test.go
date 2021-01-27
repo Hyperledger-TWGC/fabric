@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package txvalidator_test
 
 import (
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -165,7 +166,7 @@ func getProposalWithType(ccID string, pType common.HeaderType) (*peer.Proposal, 
 			Input:       &peer.ChaincodeInput{Args: [][]byte{[]byte("func")}},
 			Type:        peer.ChaincodeSpec_GOLANG}}
 
-	proposal, _, err := protoutil.CreateProposalFromCIS(pType, "testchannelid", cis, signerSerialized)
+	proposal, _, err := protoutil.CreateChaincodeProposal(pType, "testchannelid", cis, signerSerialized, sha256.New())
 	return proposal, err
 }
 
@@ -179,7 +180,7 @@ func getEnvWithType(ccID string, event []byte, res []byte, pType common.HeaderTy
 	response := &peer.Response{Status: 200}
 
 	// endorse it to get a proposal response
-	presp, err := protoutil.CreateProposalResponse(prop.Header, prop.Payload, response, res, event, &peer.ChaincodeID{Name: ccID, Version: ccVersion}, signer)
+	presp, err := protoutil.CreateProposalResponse(prop.Header, prop.Payload, response, res, event, &peer.ChaincodeID{Name: ccID, Version: ccVersion}, signer, sha256.New())
 	require.NoError(t, err)
 
 	// assemble a transaction from that proposal and endorsement
@@ -206,13 +207,13 @@ func getEnvWithSigner(ccID string, event []byte, res []byte, sig msp.SigningIden
 
 	sID, err := sig.Serialize()
 	require.NoError(t, err)
-	prop, _, err := protoutil.CreateProposalFromCIS(pType, "foochain", cis, sID)
+	prop, _, err := protoutil.CreateChaincodeProposal(pType, "foochain", cis, sID, sha256.New())
 	require.NoError(t, err)
 
 	response := &peer.Response{Status: 200}
 
 	// endorse it to get a proposal response
-	presp, err := protoutil.CreateProposalResponse(prop.Header, prop.Payload, response, res, event, &peer.ChaincodeID{Name: ccID, Version: ccVersion}, sig)
+	presp, err := protoutil.CreateProposalResponse(prop.Header, prop.Payload, response, res, event, &peer.ChaincodeID{Name: ccID, Version: ccVersion}, sig, sha256.New())
 	require.NoError(t, err)
 
 	// assemble a transaction from that proposal and endorsement
@@ -1038,7 +1039,7 @@ func testInvokeOKSCC(t *testing.T, l ledger.PeerLedger, v txvalidator.Validator)
 			Input:       &peer.ChaincodeInput{Args: [][]byte{[]byte("deploy"), []byte("testchannelid"), cds}},
 			Type:        peer.ChaincodeSpec_GOLANG}}
 
-	prop, _, err := protoutil.CreateProposalFromCIS(common.HeaderType_ENDORSER_TRANSACTION, "testchannelid", cis, signerSerialized)
+	prop, _, err := protoutil.CreateChaincodeProposal(common.HeaderType_ENDORSER_TRANSACTION, "testchannelid", cis, signerSerialized, sha256.New())
 	require.NoError(t, err)
 	rwsetBuilder := rwsetutil.NewRWSetBuilder()
 	rwsetBuilder.AddToWriteSet("lscc", "cc", protoutil.MarshalOrPanic(&ccp.ChaincodeData{Name: "cc", Version: "ver", InstantiationPolicy: policydsl.MarshaledAcceptAllPolicy}))
@@ -1046,7 +1047,7 @@ func testInvokeOKSCC(t *testing.T, l ledger.PeerLedger, v txvalidator.Validator)
 	require.NoError(t, err)
 	rwsetBytes, err := rwset.GetPubSimulationBytes()
 	require.NoError(t, err)
-	presp, err := protoutil.CreateProposalResponse(prop.Header, prop.Payload, &peer.Response{Status: 200}, rwsetBytes, nil, &peer.ChaincodeID{Name: "lscc", Version: ccVersion}, signer)
+	presp, err := protoutil.CreateProposalResponse(prop.Header, prop.Payload, &peer.Response{Status: 200}, rwsetBytes, nil, &peer.ChaincodeID{Name: "lscc", Version: ccVersion}, signer, sha256.New())
 	require.NoError(t, err)
 	tx, err := protoutil.CreateSignedTx(prop, signer, presp)
 	require.NoError(t, err)

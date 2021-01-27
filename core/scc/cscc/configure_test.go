@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package cscc
 
 import (
+	"crypto/sha256"
 	"errors"
 	"io/ioutil"
 	"net"
@@ -540,7 +541,7 @@ func TestPeerConfiger_SubmittingOrdererGenesis(t *testing.T) {
 	conf.Application = nil
 	cg, err := encoder.NewChannelGroup(conf)
 	require.NoError(t, err)
-	block := genesis.NewFactoryImpl(cg).Block("mytestchannelid")
+	block := genesis.NewFactoryImpl(cg, sha256.New()).Block("mytestchannelid")
 	blockBytes := protoutil.MarshalOrPanic(block)
 
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())

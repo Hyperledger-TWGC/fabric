@@ -8,6 +8,7 @@ package lifecycle
 
 import (
 	"context"
+	"crypto/sha256"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
@@ -172,7 +173,7 @@ func SignedProposal(channel, chaincode string, signer msp.SigningIdentity, seria
 		byteArgs = append(byteArgs, []byte(arg))
 	}
 
-	prop, txid, err := protoutil.CreateChaincodeProposalWithTxIDAndTransient(
+	prop, txid, err := protoutil.CreateChaincodeProposal(
 		pcommon.HeaderType_ENDORSER_TRANSACTION,
 		channel,
 		&pb.ChaincodeInvocationSpec{
@@ -187,8 +188,7 @@ func SignedProposal(channel, chaincode string, signer msp.SigningIdentity, seria
 			},
 		},
 		serialisedSigner,
-		"",
-		nil,
+		sha256.New(),
 	)
 	Expect(err).NotTo(HaveOccurred())
 	Expect(prop).NotTo(BeNil())

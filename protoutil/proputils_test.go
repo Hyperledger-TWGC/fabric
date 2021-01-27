@@ -82,11 +82,23 @@ func TestCDSProposals(t *testing.T) {
 }
 
 func TestProposal(t *testing.T) {
+	nonce, err := protoutil.GetRandomNonce()
+	if err != nil {
+		t.Fatalf("Could not GetRandomNonce, err %s\n", err)
+		return
+	}
+
+	creator := []byte("creator")
+	// compute txid
+	txid := protoutil.ComputeTxID(nonce, creator, sha256.New())
 	// create a proposal from a ChaincodeInvocationSpec
-	prop, _, err := protoutil.CreateChaincodeProposalWithTransient(
+	prop, _, err := protoutil.CreateChaincodeProposalWithTxIDNonceAndTransient(
+		txid,
 		common.HeaderType_ENDORSER_TRANSACTION,
-		testChannelID, createCIS(),
-		[]byte("creator"),
+		testChannelID,
+		createCIS(),
+		nonce,
+		creator,
 		map[string][]byte{"certx": []byte("transient")})
 	if err != nil {
 		t.Fatalf("Could not create chaincode proposal, err %s\n", err)
@@ -158,7 +170,7 @@ func TestProposal(t *testing.T) {
 	}
 
 	// sanity check on header extension
-	if string(hdrExt.ChaincodeId.Name) != "chaincode_name" {
+	if hdrExt.ChaincodeId.Name != "chaincode_name" {
 		t.Fatalf("Invalid header extension after unmarshalling\n")
 		return
 	}
@@ -326,7 +338,7 @@ func TestProposalResponse(t *testing.T) {
 
 func TestEnvelope(t *testing.T) {
 	// create a proposal from a ChaincodeInvocationSpec
-	prop, _, err := protoutil.CreateChaincodeProposal(common.HeaderType_ENDORSER_TRANSACTION, testChannelID, createCIS(), signerSerialized)
+	prop, _, err := protoutil.CreateChaincodeProposal(common.HeaderType_ENDORSER_TRANSACTION, testChannelID, createCIS(), signerSerialized,sha256.New())
 	if err != nil {
 		t.Fatalf("Could not create chaincode proposal, err %s\n", err)
 		return
@@ -336,7 +348,8 @@ func TestEnvelope(t *testing.T) {
 	result := []byte("res")
 	ccid := &pb.ChaincodeID{Name: "foo", Version: "v1"}
 
-	presp, err := protoutil.CreateProposalResponse(prop.Header, prop.Payload, response, result, nil, ccid, signer)
+	presp, err := protoutil.CreateProposalResponse(prop.Header, prop.Payload, response, result,
+		nil, ccid, signer, sha256.New())
 	if err != nil {
 		t.Fatalf("Could not create proposal response, err %s\n", err)
 		return
@@ -441,17 +454,18 @@ func TestProposalTxID(t *testing.T) {
 	nonce := []byte{1}
 	creator := []byte{2}
 
-	txid := protoutil.ComputeTxID(nonce, creator)
+	h := sha256.New()
+	txid := protoutil.ComputeTxID(nonce, creator, h)
 	require.NotEmpty(t, txid, "TxID cannot be empty.")
-	require.Nil(t, protoutil.CheckTxID(txid, nonce, creator))
-	require.Error(t, protoutil.CheckTxID("", nonce, creator))
+	require.Nil(t, protoutil.CheckTxID(txid, nonce, creator, h))
+	require.Error(t, protoutil.CheckTxID("", nonce, creator, h))
 
-	txid = protoutil.ComputeTxID(nil, nil)
+	txid = protoutil.ComputeTxID(nil, nil, h)
 	require.NotEmpty(t, txid, "TxID cannot be empty.")
 }
 
 func TestComputeProposalTxID(t *testing.T) {
-	txid := protoutil.ComputeTxID([]byte{1}, []byte{1})
+	txid := protoutil.ComputeTxID([]byte{1}, []byte{1}, sha256.New())
 
 	// Compute the function computed by ComputeTxID,
 	// namely, base64(sha256(nonce||creator))

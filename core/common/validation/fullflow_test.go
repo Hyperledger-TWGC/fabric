@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package validation
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"math/rand"
 	"os"
@@ -29,7 +30,7 @@ func getProposal(channelID string) (*peer.Proposal, error) {
 			ChaincodeId: getChaincodeID(),
 			Type:        peer.ChaincodeSpec_GOLANG}}
 
-	proposal, _, err := protoutil.CreateProposalFromCIS(common.HeaderType_ENDORSER_TRANSACTION, channelID, cis, signerSerialized)
+	proposal, _, err := protoutil.CreateChaincodeProposal(common.HeaderType_ENDORSER_TRANSACTION, channelID, cis, signerSerialized, sha256.New())
 	return proposal, err
 }
 
@@ -118,7 +119,7 @@ func TestGoodPath(t *testing.T) {
 	simRes := []byte("simulation_result")
 
 	// endorse it to get a proposal response
-	presp, err := protoutil.CreateProposalResponse(prop.Header, prop.Payload, response, simRes, nil, getChaincodeID(), signer)
+	presp, err := protoutil.CreateProposalResponse(prop.Header, prop.Payload, response, simRes, nil, getChaincodeID(), signer, sha256.New())
 	if err != nil {
 		t.Fatalf("CreateProposalResponse failed, err %s", err)
 		return
@@ -180,7 +181,7 @@ func TestTXWithTwoActionsRejected(t *testing.T) {
 	simRes := []byte("simulation_result")
 
 	// endorse it to get a proposal response
-	presp, err := protoutil.CreateProposalResponse(prop.Header, prop.Payload, response, simRes, nil, &peer.ChaincodeID{Name: "somename", Version: "someversion"}, signer)
+	presp, err := protoutil.CreateProposalResponse(prop.Header, prop.Payload, response, simRes, nil, &peer.ChaincodeID{Name: "somename", Version: "someversion"}, signer, sha256.New())
 	if err != nil {
 		t.Fatalf("CreateProposalResponse failed, err %s", err)
 		return
@@ -220,7 +221,7 @@ func TestBadTx(t *testing.T) {
 	simRes := []byte("simulation_result")
 
 	// endorse it to get a proposal response
-	presp, err := protoutil.CreateProposalResponse(prop.Header, prop.Payload, response, simRes, nil, getChaincodeID(), signer)
+	presp, err := protoutil.CreateProposalResponse(prop.Header, prop.Payload, response, simRes, nil, getChaincodeID(), signer, sha256.New())
 	if err != nil {
 		t.Fatalf("CreateProposalResponse failed, err %s", err)
 		return
@@ -279,7 +280,7 @@ func Test2EndorsersAgree(t *testing.T) {
 	simRes1 := []byte("simulation_result")
 
 	// endorse it to get a proposal response
-	presp1, err := protoutil.CreateProposalResponse(prop.Header, prop.Payload, response1, simRes1, nil, getChaincodeID(), signer)
+	presp1, err := protoutil.CreateProposalResponse(prop.Header, prop.Payload, response1, simRes1, nil, getChaincodeID(), signer, sha256.New())
 	if err != nil {
 		t.Fatalf("CreateProposalResponse failed, err %s", err)
 		return
@@ -289,7 +290,7 @@ func Test2EndorsersAgree(t *testing.T) {
 	simRes2 := []byte("simulation_result")
 
 	// endorse it to get a proposal response
-	presp2, err := protoutil.CreateProposalResponse(prop.Header, prop.Payload, response2, simRes2, nil, getChaincodeID(), signer)
+	presp2, err := protoutil.CreateProposalResponse(prop.Header, prop.Payload, response2, simRes2, nil, getChaincodeID(), signer, sha256.New())
 	if err != nil {
 		t.Fatalf("CreateProposalResponse failed, err %s", err)
 		return
@@ -324,7 +325,7 @@ func Test2EndorsersDisagree(t *testing.T) {
 	simRes1 := []byte("simulation_result1")
 
 	// endorse it to get a proposal response
-	presp1, err := protoutil.CreateProposalResponse(prop.Header, prop.Payload, response1, simRes1, nil, getChaincodeID(), signer)
+	presp1, err := protoutil.CreateProposalResponse(prop.Header, prop.Payload, response1, simRes1, nil, getChaincodeID(), signer, sha256.New())
 	if err != nil {
 		t.Fatalf("CreateProposalResponse failed, err %s", err)
 		return
@@ -334,7 +335,7 @@ func Test2EndorsersDisagree(t *testing.T) {
 	simRes2 := []byte("simulation_result2")
 
 	// endorse it to get a proposal response
-	presp2, err := protoutil.CreateProposalResponse(prop.Header, prop.Payload, response2, simRes2, nil, getChaincodeID(), signer)
+	presp2, err := protoutil.CreateProposalResponse(prop.Header, prop.Payload, response2, simRes2, nil, getChaincodeID(), signer, sha256.New())
 	if err != nil {
 		t.Fatalf("CreateProposalResponse failed, err %s", err)
 		return
@@ -354,7 +355,7 @@ func TestInvocationsBadArgs(t *testing.T) {
 
 	_, code := ValidateTransaction(nil, cryptoProvider)
 	require.Equal(t, code, peer.TxValidationCode_NIL_ENVELOPE)
-	err = validateEndorserTransaction(nil, nil)
+	err = validateEndorserTransaction(nil, nil, sha256.New())
 	require.Error(t, err)
 	err = validateConfigTransaction(nil, nil)
 	require.Error(t, err)
