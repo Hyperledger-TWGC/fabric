@@ -184,20 +184,16 @@ func (index *blockIndex) isAttributeIndexed(attribute blkstorage.IndexableAttr) 
 
 func (index *blockIndex) markDuplicateTxids(blockIdxInfo *blockIdxInfo) error {
 	uniqueTxids := make(map[string]bool)
-	for _, txIdxInfo := range blockIdxInfo.txOffsets {
+	txflg := ledgerUtil.TxValidationFlags(blockIdxInfo.metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	for idx, txIdxInfo := range blockIdxInfo.txOffsets {
 		txid := txIdxInfo.txID
 		if uniqueTxids[txid] { // txid is duplicate of a previous tx in the block
 			txIdxInfo.isDuplicate = true
 			continue
 		}
-
-		loc, err := index.getTxLoc(txid)
-		if loc != nil { // txid is duplicate of a previous tx in the index
+		if txflg.Flag(idx) == peer.TxValidationCode_DUPLICATE_TXID{
 			txIdxInfo.isDuplicate = true
 			continue
-		}
-		if err != blkstorage.ErrNotFoundInIndex {
-			return err
 		}
 		uniqueTxids[txid] = true
 	}
